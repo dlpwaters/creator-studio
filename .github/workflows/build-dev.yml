@@ -64,12 +64,13 @@ jobs:
           fi
 
           # Check if this is a push to main (not a PR)
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Forks retain build validation, but must not publish upstream image tags.
+          if [[ "${{ github.repository }}" == "lfnovo/open-notebook" && "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "is_push_to_main=true" >> $GITHUB_OUTPUT
             echo "This is a push to main - will publish v1-dev tags"
           else
             echo "is_push_to_main=false" >> $GITHUB_OUTPUT
-            echo "This is a PR or manual run - test build only"
+            echo "This is a fork, PR, or manual run - test build only"
           fi
 
   build-regular:

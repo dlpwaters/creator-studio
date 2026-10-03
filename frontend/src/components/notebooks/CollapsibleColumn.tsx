@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChevronLeft, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/lib/hooks/use-media-query'
 
 interface CollapsibleColumnProps {
   isCollapsed: boolean
@@ -23,7 +24,9 @@ export function CollapsibleColumn({
 }: CollapsibleColumnProps) {
   const isCJK = /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/.test(collapsedLabel);
 
-  if (isCollapsed) {
+  const isWide = useMediaQuery('(min-width: 1280px)')
+
+  if (isCollapsed && isWide) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -68,7 +71,7 @@ export function CollapsibleColumn({
 // Factory function to create a collapse button for card headers
 export function createCollapseButton(onToggle: () => void, label: string) {
   return (
-    <div className="hidden lg:block">
+    <div className="hidden xl:block">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>

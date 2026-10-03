@@ -249,12 +249,12 @@ function SourceCardImpl({
 
             {/* Title */}
             <div className={cn('mb-1.5', !isCompleted && 'mb-1')}>
-              <h4
-                className="text-sm font-medium leading-tight line-clamp-2 break-all"
+              <h3
+                className="text-sm font-medium leading-tight line-clamp-2 break-words"
                 title={title}
               >
-                {title}
-              </h4>
+                <button onClick={(event) => { event.stopPropagation(); handleCardClick() }} className="w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">{title}</button>
+              </h3>
             </div>
 
             {/* Processing message for active statuses */}
@@ -309,9 +309,10 @@ function SourceCardImpl({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
+                  aria-label={t('common.actions')}
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-8 w-8 p-0 text-muted-foreground"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MoreVertical className="h-4 w-4" />

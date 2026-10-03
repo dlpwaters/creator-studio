@@ -1,14 +1,13 @@
 'use client'
 
-import { NotebookResponse } from '@/lib/types/api'
+import { useId, useState } from 'react'
+import type { NotebookResponse } from '@/lib/types/api'
 import { NotebookCard } from './NotebookCard'
 import { NotebookRow } from './NotebookRow'
 import { useNotebookViewStore } from '@/lib/stores/notebook-view-store'
-import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { EmptyState } from '@/components/common/EmptyState'
-import { Book, ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
 import { useTranslation } from '@/lib/hooks/use-translation'
 
 interface NotebookListProps {
@@ -16,17 +15,19 @@ interface NotebookListProps {
   isLoading: boolean
   title: string
   collapsible?: boolean
+  forceExpanded?: boolean
   emptyTitle?: string
   emptyDescription?: string
   onAction?: () => void
   actionLabel?: string
 }
 
-export function NotebookList({ 
-  notebooks, 
-  isLoading, 
-  title, 
+export function NotebookList({
+  notebooks,
+  isLoading,
+  title,
   collapsible = false,
+  forceExpanded = false,
   emptyTitle,
   emptyDescription,
   onAction,
@@ -35,66 +36,93 @@ export function NotebookList({
   const { t } = useTranslation()
   const viewMode = useNotebookViewStore((state) => state.viewMode)
   const [isExpanded, setIsExpanded] = useState(!collapsible)
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (!notebooks || notebooks.length === 0) {
-    return (
-      <EmptyState
-        icon={Book}
-        title={emptyTitle ?? t('common.noResults')}
-        description={emptyDescription ?? t('chat.startByCreating')}
-        action={onAction && actionLabel ? (
-          <Button onClick={onAction} variant="outline" className="mt-4">
-            <Plus className="h-4 w-4 mr-2" />
-            {actionLabel}
-          </Button>
-        ) : undefined}
-      />
-    )
-  }
+  const contentId = useId()
+  const expanded = forceExpanded || isExpanded
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4">
       <div className="flex items-center gap-2">
-        {collapsible && (
+        {collapsible ? (
           <Button
             variant="ghost"
             size="sm"
+            className="-ml-2 gap-2"
             onClick={() => setIsExpanded(!isExpanded)}
+            aria-expanded={expanded}
+            aria-controls={contentId}
+            disabled={forceExpanded}
           >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
+            {expanded ? (
+              <ChevronDown className="size-4" />
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-4" />
             )}
+            <h2 className="text-sm font-semibold">{title}</h2>
           </Button>
-        )}
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="text-sm text-muted-foreground">({notebooks.length})</span>
-      </div>
-
-      {isExpanded && (
-        viewMode === 'list' ? (
-          <div className="flex flex-col gap-2">
-            {notebooks.map((notebook) => (
-              <NotebookRow key={notebook.id} notebook={notebook} />
-            ))}
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {notebooks.map((notebook) => (
-              <NotebookCard key={notebook.id} notebook={notebook} />
-            ))}
-          </div>
-        )
+          <h2 className="text-sm font-semibold">{title}</h2>
+        )}
+        {!isLoading && (
+          <span className="rounded-md bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+            {notebooks?.length ?? 0}
+          </span>
+        )}
+      </div>
+      {expanded && (
+        <div id={contentId}>
+          {isLoading ? (
+            <div
+              role="status"
+              aria-label={t('common.loading')}
+              className={viewMode === 'list' ? 'space-y-2' : 'notebook-grid'}
+            >
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className={`animate-pulse rounded-xl border bg-card p-5 ${viewMode === 'list' ? 'h-20' : 'h-52'}`}
+                  aria-hidden="true"
+                >
+                  <div className="h-4 w-1/2 rounded bg-muted" />
+                  <div className="mt-5 h-3 w-3/4 rounded bg-muted" />
+                  <div className="mt-3 h-3 w-1/3 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          ) : !notebooks?.length ? (
+            <div className="rounded-xl border border-dashed bg-card/50 py-8">
+              <EmptyState
+                icon={BookOpen}
+                title={emptyTitle ?? t('common.noResults')}
+                description={emptyDescription ?? t('chat.startByCreating')}
+                action={
+                  onAction && actionLabel ? (
+                    <Button
+                      onClick={onAction}
+                      variant="outline"
+                      className="mt-4"
+                    >
+                      {!forceExpanded && <Plus className="size-4" />}
+                      {actionLabel}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : viewMode === 'list' ? (
+            <div className="space-y-2">
+              {notebooks.map((notebook) => (
+                <NotebookRow key={notebook.id} notebook={notebook} />
+              ))}
+            </div>
+          ) : (
+            <div className="notebook-grid">
+              {notebooks.map((notebook) => (
+                <NotebookCard key={notebook.id} notebook={notebook} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
-    </div>
+    </section>
   )
 }

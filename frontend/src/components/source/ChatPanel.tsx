@@ -127,10 +127,10 @@ export function ChatPanel({
 
   return (
     <>
-    <Card className="flex flex-col h-full flex-1 overflow-hidden">
-      <CardHeader className="pb-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+    <Card className="workspace-panel flex min-h-0 flex-col h-full flex-1 gap-3 overflow-hidden py-4">
+      <CardHeader className="pb-3 px-4 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle role="heading" aria-level={2} className="flex items-center gap-2 text-base">
             <Bot className="h-5 w-5" />
             {title || (contextType === 'source' ? t('chat.chatWith').replace('{name}', t('navigation.sources')) : t('chat.chatWith').replace('{name}', t('common.notebook')))}
           </CardTitle>
@@ -166,15 +166,20 @@ export function ChatPanel({
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0 p-0">
-        <ScrollArea className="flex-1 min-h-0 px-4" ref={scrollAreaRef}>
+        <ScrollArea className="chat-scroll flex-1 min-h-0 min-w-0 px-4" ref={scrollAreaRef}>
           <div className="space-y-4 py-4">
             {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">
+              <div className="mx-auto max-w-sm py-8 text-center text-muted-foreground">
+                <span className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-accent text-primary"><Bot className="size-6" /></span>
+                <p className="text-base font-medium text-foreground">
                   {t('chat.startConversation').replace('{type}', contextType === 'source' ? t('navigation.sources') : t('common.notebook'))}
                 </p>
                 <p className="text-xs mt-2">{t('chat.askQuestions')}</p>
+                <div className="mt-6 space-y-2 text-left">
+                  {[t('workspace.promptSummary'), t('workspace.promptQuestions')].map(prompt => (
+                    <button key={prompt} disabled={isStreaming} onClick={() => { setInput(prompt); document.getElementById(chatInputId)?.focus() }} className="w-full rounded-lg border px-4 py-3 text-left text-xs leading-relaxed outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{prompt}</button>
+                  ))}
+                </div>
               </div>
             ) : (
               messages.map((message) => (
@@ -191,7 +196,7 @@ export function ChatPanel({
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col gap-2 max-w-[80%]">
+                  <div className="flex min-w-0 flex-col gap-2 max-w-[85%]">
                     <div
                       className={`rounded-lg px-4 py-2 ${
                         message.type === 'human'
@@ -296,6 +301,7 @@ export function ChatPanel({
             <Textarea
               id={chatInputId}
               name="chat-message"
+              aria-label={t('chat.sendPlaceholder')}
               autoComplete="off"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -306,6 +312,7 @@ export function ChatPanel({
               rows={1}
             />
             <Button
+              aria-label={t('workspace.sendMessage')}
               onClick={handleSend}
               disabled={!input.trim() || isStreaming}
               size="icon"
@@ -342,12 +349,15 @@ function AIMessageContent({
   const LinkComponent = createCompactReferenceLinkComponent(onReferenceClick)
 
   return (
-    <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none break-words prose-headings:font-semibold prose-a:text-blue-600 prose-a:break-all prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-p:mb-4 prose-p:leading-7 prose-li:mb-2">
+    <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none break-words prose-headings:font-semibold prose-a:text-primary prose-a:break-all prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-p:mb-4 prose-p:leading-7 prose-li:mb-2">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
           a: LinkComponent,
+          span: ({ node, ...props }) => (
+            <span {...props} tabIndex={Array.isArray(node?.properties?.className) && node.properties.className.includes('katex-display') ? 0 : props.tabIndex} />
+          ),
           p: ({ children }) => <p className="mb-4">{children}</p>,
           h1: ({ children }) => <h1 className="mb-4 mt-6">{children}</h1>,
           h2: ({ children }) => <h2 className="mb-3 mt-5">{children}</h2>,
@@ -359,7 +369,7 @@ function AIMessageContent({
           ul: ({ children }) => <ul className="mb-4 space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="mb-4 space-y-1">{children}</ol>,
           table: ({ children }) => (
-            <div className="my-4 overflow-x-auto">
+            <div tabIndex={0} className="my-4 overflow-x-auto rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <table className="min-w-full border-collapse border border-border">{children}</table>
             </div>
           ),

@@ -64,6 +64,7 @@ export function ContextToggle({ mode, hasInsights = false, onChange, className }
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
+            aria-label={`${config.label}. ${t('common.contextModes.clickToCycle')}`}
             variant="ghost"
             size="sm"
             className={cn(

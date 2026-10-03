@@ -75,6 +75,7 @@ export function MessageActions({ content, notebookId }: MessageActionsProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                aria-label={t('common.saveToNote')}
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2"
@@ -96,6 +97,7 @@ export function MessageActions({ content, notebookId }: MessageActionsProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              aria-label={t('common.copyToClipboard')}
               variant="ghost"
               size="sm"
               className="h-7 px-2"
