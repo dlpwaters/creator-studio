@@ -8,7 +8,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { EmptyState } from '@/components/common/EmptyState'
 import { AppShell } from '@/components/layout/AppShell'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { FileText, Link as LinkIcon, Upload, AlignLeft, Trash2, ArrowUpDown } from 'lucide-react'
+import { FileText, Link as LinkIcon, Upload, AlignLeft, Trash2, ArrowUpDown, Plus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,9 +17,11 @@ import { getDateLocale } from '@/lib/utils/date-locale'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { getApiErrorKey } from '@/lib/utils/error-handler'
+import { useCreateDialogs } from '@/lib/hooks/use-create-dialogs'
 
 export default function SourcesPage() {
   const { t, language } = useTranslation()
+  const { openSourceDialog } = useCreateDialogs()
   const [sources, setSources] = useState<SourceListResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -47,6 +49,7 @@ export default function SourcesPage() {
       }
 
       if (reset) {
+        setError(null)
         setLoading(true)
         offsetRef.current = 0
         setSources([])
@@ -82,7 +85,7 @@ export default function SourcesPage() {
       setLoadingMore(false)
       loadingMoreRef.current = false
     }
-  }, [sortBy, sortOrder, t('sources.failedToLoad')])
+  }, [sortBy, sortOrder, t])
 
   // Initial load and when sort changes
   useEffect(() => {
@@ -264,8 +267,9 @@ export default function SourcesPage() {
   if (error) {
     return (
       <AppShell>
-        <div className="flex h-full items-center justify-center">
-          <p className="text-red-500">{error}</p>
+        <div role="alert" className="flex h-full flex-col items-center justify-center gap-4 p-6">
+          <p className="text-destructive">{error}</p>
+          <Button variant="outline" onClick={() => fetchSources(true)}>{t('common.retry')}</Button>
         </div>
       </AppShell>
     )
@@ -278,6 +282,7 @@ export default function SourcesPage() {
           icon={FileText}
           title={t('sources.noSourcesYet')}
           description={t('sources.allSourcesDescShort')}
+          action={<Button onClick={openSourceDialog}><Plus className="size-4" />{t('sources.add')}</Button>}
         />
       </AppShell>
     )
@@ -285,12 +290,13 @@ export default function SourcesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col h-full w-full max-w-none px-6 py-6">
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-3xl font-bold">{t('sources.allSources')}</h1>
-          <p className="mt-2 text-muted-foreground">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-4 py-7 sm:px-8 sm:py-10 lg:px-10">
+        <div className="mb-6 flex shrink-0 flex-wrap items-end justify-between gap-4">
+          <div><h1 className="research-title text-4xl">{t('sources.allSources')}</h1>
+          <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground">
             {t('sources.allSourcesDesc')}
-          </p>
+          </p></div>
+          <Button onClick={openSourceDialog}><Plus className="size-4" />{t('sources.add')}</Button>
         </div>
 
         <div ref={scrollContainerRef} className="flex-1 rounded-md border overflow-auto">

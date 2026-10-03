@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -10,7 +10,8 @@ import { ConnectionGuard } from "@/components/common/ConnectionGuard";
 import { themeScript } from "@/lib/theme-script";
 import { I18nProvider } from "@/components/providers/I18nProvider";
 
-const inter = Inter({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
   title: "Open Notebook",
@@ -27,7 +28,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans`}>
         <ErrorBoundary>
           <ThemeProvider>
             <QueryProvider>

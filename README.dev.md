@@ -20,6 +20,36 @@ uv sync
 make start-all
 ```
 
+## Frontend workspace preview
+
+The frontend provides a notebook library with name/description search, recent-update
+or name sorting, and tile/list views. Notebook pages show Sources, Chat, and Notes
+on wide screens; smaller screens use tabs. The mobile menu and **Quick actions**
+button provide access to the same routes as the desktop sidebar. Chat starters
+fill an editable draft; sending remains an explicit action.
+
+To preview this checkout against a backend already running on port 5055:
+
+```bash
+cd frontend
+npm ci
+API_URL=http://127.0.0.1:3100 npm run dev -- --hostname 127.0.0.1 --port 3100
+```
+
+Open `http://127.0.0.1:3100/notebooks`. The explicit API URL uses the frontend's
+existing proxy and avoids needing a new browser origin in the backend's CORS list.
+An installed upstream Docker image continues to serve its bundled frontend until
+an image is rebuilt and deployed from this checkout.
+
+Validate frontend changes with:
+
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
 ## Development Workflows
 
 ### When to Use What?

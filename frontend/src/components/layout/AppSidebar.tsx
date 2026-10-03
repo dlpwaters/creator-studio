@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-
+import type { TFunction } from 'i18next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSidebarStore } from '@/lib/stores/sidebar-store'
 import { useCreateDialogs } from '@/lib/hooks/use-create-dialogs'
+import { useTranslation } from '@/lib/hooks/use-translation'
 import {
   Tooltip,
   TooltipContent,
@@ -24,9 +25,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
 import { LanguageToggle } from '@/components/common/LanguageToggle'
-import type { TFunction } from 'i18next'
-import { useTranslation } from '@/lib/hooks/use-translation'
-import { Separator } from '@/components/ui/separator'
 import {
   Book,
   Search,
@@ -35,8 +33,8 @@ import {
   Shuffle,
   Settings,
   LogOut,
-  ChevronLeft,
-  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   FileText,
   Plus,
   Wrench,
@@ -45,12 +43,6 @@ import {
 
 const getNavigation = (t: TFunction) => [
   {
-    title: t('navigation.collect'),
-    items: [
-      { name: t('navigation.sources'), href: '/sources', icon: FileText },
-    ],
-  },
-  {
     title: t('navigation.process'),
     items: [
       { name: t('navigation.notebooks'), href: '/notebooks', icon: Book },
@@ -58,233 +50,192 @@ const getNavigation = (t: TFunction) => [
     ],
   },
   {
-    title: t('navigation.create'),
+    title: t('navigation.collect'),
     items: [
-      { name: t('navigation.podcasts'), href: '/podcasts', icon: Mic },
+      { name: t('navigation.sources'), href: '/sources', icon: FileText },
     ],
+  },
+  {
+    title: t('navigation.create'),
+    items: [{ name: t('navigation.podcasts'), href: '/podcasts', icon: Mic }],
   },
   {
     title: t('navigation.manage'),
     items: [
       { name: t('navigation.models'), href: '/settings/api-keys', icon: Bot },
-      { name: t('navigation.transformations'), href: '/transformations', icon: Shuffle },
+      {
+        name: t('navigation.transformations'),
+        href: '/transformations',
+        icon: Shuffle,
+      },
       { name: t('navigation.settings'), href: '/settings', icon: Settings },
       { name: t('navigation.advanced'), href: '/advanced', icon: Wrench },
     ],
   },
-] as const
+]
 
-type CreateTarget = 'source' | 'notebook' | 'podcast'
+interface AppSidebarProps {
+  mobile?: boolean
+  onNavigate?: () => void
+}
 
-export function AppSidebar() {
+export function AppSidebar({ mobile = false, onNavigate }: AppSidebarProps) {
   const { t } = useTranslation()
-  const navigation = getNavigation(t)
   const pathname = usePathname()
   const { logout } = useAuth()
-  const { isCollapsed, toggleCollapse } = useSidebarStore()
-  const { openSourceDialog, openNotebookDialog, openPodcastDialog } = useCreateDialogs()
-
+  const { isCollapsed: storedCollapsed, toggleCollapse } = useSidebarStore()
+  const isCollapsed = !mobile && storedCollapsed
+  const { openSourceDialog, openNotebookDialog, openPodcastDialog } =
+    useCreateDialogs()
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
-  const [isMac, setIsMac] = useState(true) // Default to Mac for SSR
+  const [isMac, setIsMac] = useState(false)
+  const navigation = getNavigation(t)
+  // Match the longest path so Models and Settings cannot both be active.
+  const activeHref = navigation
+    .flatMap((group) => group.items)
+    .filter(
+      (link) => pathname === link.href || pathname?.startsWith(`${link.href}/`),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
-  // Detect platform for keyboard shortcut display
   useEffect(() => {
     setIsMac(navigator.platform.toLowerCase().includes('mac'))
   }, [])
 
-  const handleCreateSelection = (target: CreateTarget) => {
-    setCreateMenuOpen(false)
-
-    if (target === 'source') {
-      openSourceDialog()
-    } else if (target === 'notebook') {
-      openNotebookDialog()
-    } else if (target === 'podcast') {
-      openPodcastDialog()
-    }
-  }
+  const createItems = [
+    { name: t('common.newNotebook'), icon: Book, action: openNotebookDialog },
+    { name: t('common.newSource'), icon: FileText, action: openSourceDialog },
+    { name: t('common.podcast'), icon: Mic, action: openPodcastDialog },
+  ]
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <div
+    <TooltipProvider delayDuration={100}>
+      <aside
         className={cn(
-          'app-sidebar flex h-full flex-col bg-sidebar border-sidebar-border border-r transition-all duration-300',
-          isCollapsed ? 'w-16' : 'w-64'
+          'app-sidebar flex h-full min-h-0 shrink-0 flex-col border-r',
+          isCollapsed ? 'w-16' : 'w-60',
+          mobile && 'w-full border-0',
         )}
       >
         <div
           className={cn(
-            'flex h-16 items-center group',
-            isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+            'flex h-16 shrink-0 items-center gap-2',
+            isCollapsed ? 'justify-center px-2' : 'px-4',
           )}
         >
-          {isCollapsed ? (
-            <div className="relative flex items-center justify-center w-full">
-              <Image
-                src="/logo.svg"
-                alt="Open Notebook"
-                width={32}
-                height={32}
-                className="transition-opacity group-hover:opacity-0"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleCollapse}
-                className="absolute text-sidebar-foreground hover:bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Image src="/logo.svg" alt={t('common.appName')} width={32} height={32} />
-                <span className="text-base font-medium text-sidebar-foreground">
-                  {t('common.appName')}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleCollapse}
-                className="text-sidebar-foreground hover:bg-sidebar-accent"
-                data-testid="sidebar-toggle"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </>
+          {!isCollapsed && (
+            <Link
+              href="/notebooks"
+              onClick={onNavigate}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Image src="/logo.svg" alt="" width={26} height={26} />
+              <span className="text-sm font-semibold tracking-tight">
+                {t('common.appName')}
+              </span>
+            </Link>
+          )}
+          {!mobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleCollapse}
+              data-testid="sidebar-toggle"
+              aria-label={t(
+                isCollapsed
+                  ? 'workspace.expandSidebar'
+                  : 'workspace.collapseSidebar',
+              )}
+              className="size-8 text-muted-foreground"
+            >
+              {isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+            </Button>
           )}
         </div>
 
+        <div className={cn('shrink-0 pb-3', isCollapsed ? 'px-2' : 'px-4')}>
+          <DropdownMenu open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className={cn('h-10 w-full', !isCollapsed && 'justify-start')}
+                aria-label={t('common.create')}
+              >
+                <Plus />
+                {!isCollapsed && t('common.create')}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side={isCollapsed ? 'right' : 'bottom'}
+              align="start"
+              className="w-52"
+            >
+              {createItems.map((item) => (
+                <DropdownMenuItem
+                  key={item.name}
+                  className="gap-2"
+                  onSelect={() => {
+                    setCreateMenuOpen(false)
+                    onNavigate?.()
+                    // Let the mobile navigation dialog return focus before opening a form.
+                    setTimeout(item.action, 0)
+                  }}
+                >
+                  <item.icon className="size-4" />
+                  {item.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <nav
+          aria-label={t('navigation.nav')}
           className={cn(
-            'flex-1 space-y-1 py-4',
-            isCollapsed ? 'px-2' : 'px-3'
+            'min-h-0 flex-1 overflow-y-auto pb-4',
+            isCollapsed ? 'px-2' : 'px-3',
           )}
         >
-          <div
-            className={cn(
-              'mb-4',
-              isCollapsed ? 'px-0' : 'px-3'
-            )}
-          >
-            <DropdownMenu open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-              {isCollapsed ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        onClick={() => setCreateMenuOpen(true)}
-                        variant="default"
-                        size="sm"
-                        className="w-full justify-center px-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-                        aria-label={t('common.create')}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                   <TooltipContent side="right">{t('common.create')}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    onClick={() => setCreateMenuOpen(true)}
-                    variant="default"
-                    size="sm"
-                    className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('common.create')}
-                  </Button>
-                </DropdownMenuTrigger>
-              )}
-
-              <DropdownMenuContent
-                align={isCollapsed ? 'end' : 'start'}
-                side={isCollapsed ? 'right' : 'bottom'}
-                className="w-48"
-              >
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    handleCreateSelection('source')
-                  }}
-                  className="gap-2"
-                >
-                   <FileText className="h-4 w-4" />
-                  {t('common.source')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    handleCreateSelection('notebook')
-                  }}
-                  className="gap-2"
-                >
-                   <Book className="h-4 w-4" />
-                  {t('common.notebook')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    handleCreateSelection('podcast')
-                  }}
-                  className="gap-2"
-                >
-                   <Mic className="h-4 w-4" />
-                  {t('common.podcast')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
           {navigation.map((section, index) => (
-            <div key={section.title}>
-              {index > 0 && (
-                <Separator className="my-3" />
+            <div key={section.title} className={cn(index > 0 && 'mt-4')}>
+              {!isCollapsed && (
+                <h3 className="mb-1.5 px-3 text-xs font-medium text-muted-foreground">
+                  {section.title}
+                </h3>
               )}
               <div className="space-y-1">
-                {!isCollapsed && (
-                  <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-                    {section.title}
-                  </h3>
-                )}
-
                 {section.items.map((item) => {
-                  const isActive = pathname?.startsWith(item.href) || false
-                  const button = (
+                  const isActive = item.href === activeHref
+                  const link = (
                     <Button
-                      variant={isActive ? 'secondary' : 'ghost'}
+                      asChild
+                      variant="ghost"
                       className={cn(
-                        'w-full gap-3 text-sidebar-foreground sidebar-menu-item',
-                        isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-                        isCollapsed ? 'justify-center px-2' : 'justify-start'
+                        'sidebar-menu-item h-10 w-full gap-3 font-normal',
+                        isCollapsed
+                          ? 'justify-center px-2'
+                          : 'justify-start px-3',
+                        isActive &&
+                          'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.name}</span>}
+                      <Link
+                        href={item.href}
+                        onClick={onNavigate}
+                        aria-current={isActive ? 'page' : undefined}
+                        aria-label={isCollapsed ? item.name : undefined}
+                      >
+                        <item.icon className="size-4" />
+                        {!isCollapsed && <span>{item.name}</span>}
+                      </Link>
                     </Button>
                   )
-
-                  if (isCollapsed) {
-                    return (
-                      <Tooltip key={item.name}>
-                        <TooltipTrigger asChild>
-                          <Link href={item.href}>
-                            {button}
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">{item.name}</TooltipContent>
-                      </Tooltip>
-                    )
-                  }
-
-                  return (
-                    <Link key={item.name} href={item.href}>
-                      {button}
-                    </Link>
+                  return isCollapsed ? (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right">{item.name}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <div key={item.href}>{link}</div>
                   )
                 })}
               </div>
@@ -294,88 +245,72 @@ export function AppSidebar() {
 
         <div
           className={cn(
-            'border-t border-sidebar-border p-3 space-y-2',
-            isCollapsed && 'px-2'
+            'shrink-0 space-y-2 border-t py-3',
+            isCollapsed ? 'px-2' : 'px-3',
           )}
         >
-          {/* Command Palette hint */}
-          {!isCollapsed && (
-            <div className="px-3 py-1.5 text-xs text-sidebar-foreground/60">
-              <div className="flex items-center justify-between">
-                 <span className="flex items-center gap-1.5">
-                  <Command className="h-3 w-3" />
-                  {t('common.quickActions')}
-                </span>
-                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  {isMac ? <span className="text-xs">⌘</span> : <span>Ctrl+</span>}K
-                </kbd>
-              </div>
-               <p className="mt-1 text-[10px] text-sidebar-foreground/40">
-                {t('common.quickActionsDesc')}
-              </p>
-            </div>
-          )}
-
-           <div
+          <Button
+            variant="ghost"
+            aria-label={t('common.quickActions')}
             className={cn(
-              'flex flex-col gap-2',
-              isCollapsed ? 'items-center' : 'items-stretch'
+              'w-full text-muted-foreground',
+              !isCollapsed && 'justify-between px-3',
+            )}
+            onClick={() => {
+              onNavigate?.()
+              setTimeout(
+                () => window.dispatchEvent(new Event('open-command-palette')),
+                0,
+              )
+            }}
+          >
+            <span className="flex items-center gap-2">
+              <Command className="size-4" />
+              {!isCollapsed && (
+                <span className="text-xs">{t('common.quickActions')}</span>
+              )}
+            </span>
+            {!isCollapsed && (
+              <kbd className="rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                {isMac ? '⌘' : 'Ctrl+'}K
+              </kbd>
+            )}
+          </Button>
+          <div
+            className={cn(
+              'flex gap-1',
+              isCollapsed
+                ? 'flex-col items-center'
+                : 'items-center justify-between px-2',
             )}
           >
-            {isCollapsed ? (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <ThemeToggle iconOnly />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('common.theme')}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <LanguageToggle iconOnly />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{t('common.language')}</TooltipContent>
-                </Tooltip>
-              </>
-            ) : (
-              <>
-                <ThemeToggle />
-                <LanguageToggle />
-              </>
+            <ThemeToggle iconOnly />
+            <LanguageToggle iconOnly />
+            {!isCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                aria-label={t('common.signOut')}
+                className="text-muted-foreground"
+              >
+                <LogOut />
+              </Button>
             )}
           </div>
-
-          {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-center sidebar-menu-item"
-                  onClick={logout}
-                  aria-label={t('common.signOut')}
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-               <TooltipContent side="right">{t('common.signOut')}</TooltipContent>
-            </Tooltip>
-          ) : (
+          {isCollapsed && (
             <Button
-              variant="outline"
-              className="w-full justify-start gap-3 sidebar-menu-item"
+              variant="ghost"
+              size="icon"
               onClick={logout}
               aria-label={t('common.signOut')}
-             >
-              <LogOut className="h-4 w-4" />
-              {t('common.signOut')}
+              className="w-full text-muted-foreground"
+            >
+              <LogOut />
             </Button>
           )}
         </div>
-      </div>
+      </aside>
     </TooltipProvider>
   )
 }

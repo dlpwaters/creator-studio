@@ -91,7 +91,12 @@ export function CommandPalette() {
 
     // Use capture phase to intercept before other handlers
     document.addEventListener('keydown', down, true)
-    return () => document.removeEventListener('keydown', down, true)
+    const openPalette = () => setOpen(true)
+    window.addEventListener('open-command-palette', openPalette)
+    return () => {
+      document.removeEventListener('keydown', down, true)
+      window.removeEventListener('open-command-palette', openPalette)
+    }
   }, [])
 
   // Reset query when dialog closes

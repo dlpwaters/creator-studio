@@ -70,7 +70,7 @@ export function SourcesColumn({
   const { sourcesCollapsed, toggleSources } = useNotebookColumnsStore()
   const collapseButton = useMemo(
     () => createCollapseButton(toggleSources, t('navigation.sources')),
-    [toggleSources, t('navigation.sources')]
+    [toggleSources, t]
   )
 
   // Scroll container ref for infinite scroll
@@ -156,10 +156,10 @@ export function SourcesColumn({
         collapsedIcon={FileText}
         collapsedLabel={t('navigation.sources')}
       >
-        <Card className="h-full flex flex-col flex-1 overflow-hidden">
-          <CardHeader className="pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-lg">{t('navigation.sources')}</CardTitle>
+        <Card className="workspace-panel h-full flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-4">
+          <CardHeader className="shrink-0 px-4 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle role="heading" aria-level={2} className="text-base">{t('navigation.sources')}</CardTitle>
               <div className="flex items-center gap-2">
                 {onBulkContextModeChange && sources && sources.length > 0 && (
                   <DropdownMenu>
@@ -206,7 +206,7 @@ export function SourcesColumn({
             </div>
           </CardHeader>
 
-          <CardContent ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0">
+          <CardContent ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner />

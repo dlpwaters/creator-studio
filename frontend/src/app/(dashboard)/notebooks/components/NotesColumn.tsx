@@ -55,7 +55,7 @@ export function NotesColumn({
   const { notesCollapsed, toggleNotes } = useNotebookColumnsStore()
   const collapseButton = useMemo(
     () => createCollapseButton(toggleNotes, t('common.notes')),
-    [toggleNotes, t('common.notes')]
+    [toggleNotes, t]
   )
 
   const handleDeleteClick = (noteId: string) => {
@@ -83,10 +83,10 @@ export function NotesColumn({
         collapsedIcon={StickyNote}
         collapsedLabel={t('common.notes')}
       >
-        <Card className="h-full flex flex-col flex-1 overflow-hidden">
-          <CardHeader className="pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-lg">{t('common.notes')}</CardTitle>
+        <Card className="workspace-panel h-full flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-4">
+          <CardHeader className="shrink-0 px-4 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle role="heading" aria-level={2} className="text-base">{t('common.notes')}</CardTitle>
               <div className="flex items-center gap-2">
                 {onBulkContextModeChange && notes && notes.length > 0 && (
                   <DropdownMenu>
@@ -121,7 +121,7 @@ export function NotesColumn({
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 overflow-y-auto min-h-0">
+          <CardContent className="min-h-0 flex-1 overflow-y-auto px-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner />
@@ -140,7 +140,7 @@ export function NotesColumn({
                     className="p-3 border rounded-lg card-hover group relative cursor-pointer"
                     onClick={() => setEditingNote(note)}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {note.note_type === 'ai' ? (
                           <Bot className="h-4 w-4 text-primary" />
@@ -175,9 +175,10 @@ export function NotesColumn({
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
+                              aria-label={t('common.actions')}
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-8 w-8 p-0 text-muted-foreground"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
@@ -189,7 +190,7 @@ export function NotesColumn({
                                 e.stopPropagation()
                                 handleDeleteClick(note.id)
                               }}
-                              className="text-red-600 focus:text-red-600"
+                              className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               {t('notebooks.deleteNote')}
@@ -199,9 +200,7 @@ export function NotesColumn({
                       </div>
                     </div>
 
-                    {note.title && (
-                      <h4 className="text-sm font-medium mb-2 break-all">{note.title}</h4>
-                    )}
+                    <h3 className="mb-2 text-sm font-medium break-words"><button className="w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={(event) => { event.stopPropagation(); setEditingNote(note) }}>{note.title || t('common.note')}</button></h3>
 
                     {note.content && (
                       <p className="text-sm text-muted-foreground line-clamp-3 break-all">
