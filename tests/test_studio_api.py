@@ -256,6 +256,16 @@ def test_ai_makes_one_structured_call_with_bounded_input(studio, monkeypatch):
     assert any("Truncated" in warning for warning in artifact["warnings"])
 
 
+def test_video_request_separates_visible_content_from_spoken_notes(studio, monkeypatch):
+    invocation = mock_ai(studio, monkeypatch)
+    create(studio, generation="ai", kind="video")
+    messages = invocation.call_args.args[0]
+    system = messages[0][1]
+    assert "title, body and bullets as the visible scene content" in system
+    assert "Video notes must contain only words to speak aloud" in system
+    assert "no scene directions" in system
+
+
 @pytest.mark.parametrize(
     "bad",
     [
