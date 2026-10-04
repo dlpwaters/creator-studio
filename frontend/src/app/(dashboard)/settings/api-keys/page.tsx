@@ -19,7 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  RefreshCw,
   Key,
   ShieldAlert,
   AlertTriangle,
@@ -51,12 +50,12 @@ import {
   useTestCredential,
   useDiscoverModels,
   useRegisterModels,
-  useMigrateFromEnv,
 } from '@/lib/hooks/use-credentials'
 import { Credential, CreateCredentialRequest, UpdateCredentialRequest, DiscoveredModel } from '@/lib/api/credentials'
 import { Model, ModelDefaults } from '@/lib/types/models'
 import { MigrationBanner, ModelTestResultDialog } from '@/components/settings'
 import { EmbeddingModelChangeDialog } from '@/components/settings/EmbeddingModelChangeDialog'
+import { ProviderSetupGuide } from '@/components/settings/ProviderSetupGuide'
 
 type ModelType = 'language' | 'embedding' | 'text_to_speech' | 'speech_to_text'
 
@@ -271,6 +270,7 @@ function CredentialFormDialog({
               ? t('apiKeys.editConfig').replace('{provider}', PROVIDER_DISPLAY_NAMES[provider] || provider)
               : t('apiKeys.addConfig').replace('{provider}', PROVIDER_DISPLAY_NAMES[provider] || provider)}
           </DialogTitle>
+          {provider === 'openai' && <DialogDescription>{t('workflows.openaiFormHint')}</DialogDescription>}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
@@ -826,7 +826,7 @@ function CredentialItem({
   return (
     <>
       <div className="border rounded-lg p-3 space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-medium truncate">{credential.name}</span>
             <div className="flex gap-1">
@@ -859,20 +859,22 @@ function CredentialItem({
               onClick={() => testCredential(credential.id)}
               disabled={isTestPending || !!credential.decryption_error}
               title={t('apiKeys.testConnection')}
+              aria-label={t('apiKeys.testConnection')}
             >
               {isTestPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
-              <span className="hidden sm:inline text-xs">Test</span>
+              <span className="hidden sm:inline text-xs">{t('apiKeys.testConnection')}</span>
             </Button>
             <Button
               variant="ghost" size="sm"
               onClick={() => setDiscoverOpen(true)}
               disabled={!!credential.decryption_error}
-              title={t('apiKeys.syncModels')}
+              title={t('models.discoverModels')}
+              aria-label={t('models.discoverModels')}
             >
               <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">Models</span>
+              <span className="hidden sm:inline text-xs">{t('models.discoverModels')}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} disabled={!!credential.decryption_error} title={t('common.edit')}>
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} disabled={!!credential.decryption_error} title={t('common.edit')} aria-label={t('common.edit')}>
               <Edit className="h-4 w-4" />
             </Button>
             <Button
@@ -880,6 +882,7 @@ function CredentialItem({
               onClick={() => setDeleteOpen(true)}
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
               title={t('common.delete')}
+              aria-label={t('common.delete')}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -1025,7 +1028,7 @@ function ProviderSection({
   const activeTypes = new Set(providerModels.map(m => m.type))
 
   return (
-    <Card className={!hasCredentials ? 'opacity-80' : undefined}>
+    <Card id={`provider-${provider}`} className={!hasCredentials ? 'opacity-80 scroll-mt-6' : 'scroll-mt-6'}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-wrap">
@@ -1325,13 +1328,24 @@ export default function ApiKeysPage() {
   const { t } = useTranslation()
 
   // Data
-  const { data: credentials, isLoading: credentialsLoading } = useCredentials()
-  const { data: models, isLoading: modelsLoading } = useModels()
-  const { data: defaults, isLoading: defaultsLoading } = useModelDefaults()
-  const { data: credentialStatus } = useCredentialStatus()
+  const credentialQuery = useCredentials()
+  const modelQuery = useModels()
+  const defaultQuery = useModelDefaults()
+  const statusQuery = useCredentialStatus()
+  const { data: credentials, isLoading: credentialsLoading } = credentialQuery
+  const { data: models, isLoading: modelsLoading } = modelQuery
+  const { data: defaults, isLoading: defaultsLoading } = defaultQuery
+  const { data: credentialStatus } = statusQuery
   const { data: envStatus } = useEnvStatus()
 
-  const encryptionReady = credentialStatus?.encryption_configured ?? true
+  const encryptionReady = credentialStatus?.encryption_configured === true
+  const settingsLoadFailed = credentialQuery.isError || modelQuery.isError || defaultQuery.isError
+  const retrySettings = () => {
+    void credentialQuery.refetch()
+    void modelQuery.refetch()
+    void defaultQuery.refetch()
+    void statusQuery.refetch()
+  }
 
   // Group credentials by provider
   const credentialsByProvider = useMemo(() => {
@@ -1394,8 +1408,22 @@ export default function ApiKeysPage() {
             <p className="text-muted-foreground mt-1">{t('apiKeys.description')}</p>
           </div>
 
+          <ProviderSetupGuide hasCredentials={(credentials?.length || 0) > 0} />
+
+          {(settingsLoadFailed || statusQuery.isError || statusQuery.isPending) && (
+            <Alert variant={settingsLoadFailed || statusQuery.isError ? 'destructive' : 'default'}>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>{t(settingsLoadFailed ? 'workflows.providerLoadError' : statusQuery.isError ? 'workflows.encryptionError' : 'workflows.encryptionPending')}</span>
+                {(settingsLoadFailed || statusQuery.isError) && (
+                  <Button variant="outline" size="sm" onClick={retrySettings}>{t('workflows.retry')}</Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Encryption warning */}
-          {!encryptionReady && (
+          {credentialStatus?.encryption_configured === false && (
             <Alert className="border-red-500/50 bg-red-50 dark:bg-red-950/20">
               <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />
               <AlertTitle className="text-red-800 dark:text-red-200">{t('apiKeys.encryptionRequired')}</AlertTitle>
@@ -1411,9 +1439,11 @@ export default function ApiKeysPage() {
           {encryptionReady && <MigrationBanner providersToMigrate={providersToMigrate} />}
 
           {/* Default Model Selectors */}
-          {models && defaults && (
-            <DefaultModelSelectors models={models} defaults={defaults} />
-          )}
+          <section id="default-models" className="scroll-mt-6" aria-label={t('models.defaultAssignments')}>
+            {models && defaults && (
+              <DefaultModelSelectors models={models} defaults={defaults} />
+            )}
+          </section>
 
           {/* Provider Cards */}
           <div className="grid gap-4">

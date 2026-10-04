@@ -1,7 +1,12 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 // German locale.
 // Translate values only; do not change keys, placeholders or structure.
 
 export const deDE = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "Zum Inhalt springen",
     openNavigation: "Navigation öffnen",
@@ -938,7 +943,6 @@ export const deDE = {
     testConnection: "Verbindung testen",
     testSuccess: "Verbindung erfolgreich",
     testFailed: "Verbindungstest fehlgeschlagen",
-    syncModels: "Modelle synchronisieren",
     syncSuccess: "{discovered} Modelle erkannt, {new} neue hinzugefügt",
     syncNoNew: "{count} Modelle erkannt, alle bereits registriert",
     syncFailed: "Modelle konnten nicht synchronisiert werden",

@@ -33,6 +33,8 @@ from api.routers import (
     source_chat,
     sources,
     speaker_profiles,
+    studio,
+    studio_exports,
     transformations,
 )
 from api.routers import commands as commands_router
@@ -310,6 +312,8 @@ app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(source_chat.router, prefix="/api", tags=["source-chat"])
 app.include_router(credentials.router, prefix="/api", tags=["credentials"])
 app.include_router(languages.router, prefix="/api", tags=["languages"])
+app.include_router(studio.router, prefix="/api", tags=["studio"])
+app.include_router(studio_exports.router, prefix="/api", tags=["studio-exports"])
 
 
 @app.get("/")

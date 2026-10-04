@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useAuthStore } from '@/lib/stores/auth-store'
@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertCircle } from 'lucide-react'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useTranslation } from '@/lib/hooks/use-translation'
+import { consumeLoginRedirect } from '@/lib/utils/login-redirect'
 
 export function LoginForm() {
   const { t, language } = useTranslation()
@@ -20,6 +21,7 @@ export function LoginForm() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [configInfo, setConfigInfo] = useState<{ apiUrl: string; version: string; buildTime: string } | null>(null)
   const router = useRouter()
+  const redirectDestination = useRef<string | null>(null)
 
   // Load config info for debugging
   useEffect(() => {
@@ -44,9 +46,10 @@ export function LoginForm() {
       try {
         const required = await checkAuthRequired()
 
-        // If auth is not required, redirect to notebooks
+        // Retain the requested route even when password authentication is off.
         if (!required) {
-          router.push('/notebooks')
+          redirectDestination.current ??= consumeLoginRedirect()
+          router.replace(redirectDestination.current)
         }
       } catch (error) {
         console.error('Error checking auth requirement:', error)
@@ -59,7 +62,8 @@ export function LoginForm() {
     // If we already know auth status, use it
     if (authRequired !== null) {
       if (!authRequired && isAuthenticated) {
-        router.push('/notebooks')
+        redirectDestination.current ??= consumeLoginRedirect()
+        router.replace(redirectDestination.current)
       } else {
         setIsCheckingAuth(false)
       }

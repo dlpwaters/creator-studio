@@ -4,6 +4,7 @@ Handles token counting and cost calculations for language models.
 """
 
 import os
+from math import ceil
 
 from open_notebook.config import TIKTOKEN_CACHE_DIR
 
@@ -26,7 +27,7 @@ def token_count(input_string: str) -> int:
         import tiktoken
 
         encoding = tiktoken.get_encoding("o200k_base")
-        tokens = encoding.encode(input_string)
+        tokens = encoding.encode(input_string, disallowed_special=())
         return len(tokens)
     except (ImportError, OSError) as e:
         # Fallback: handles ImportError (tiktoken not installed) AND network/OS
@@ -35,9 +36,14 @@ def token_count(input_string: str) -> int:
         from loguru import logger
 
         logger.warning(
-            "tiktoken unavailable, falling back to word-count estimation: {}", e
+            "tiktoken unavailable, falling back to text-length estimation: {}", e
         )
-        return int(len(input_string.split()) * 1.3)
+        # Word counts stay constant for CJK text and long strings without spaces.
+        # Include byte length so every growing input consumes a growing budget.
+        return max(
+            ceil(len(input_string.split()) * 1.3),
+            ceil(len(input_string.encode("utf-8")) / 3),
+        )
 
 
 def token_cost(token_count: int, cost_per_million: float = 0.150) -> float:

@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const caES = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "Vés al contingut",
     openNavigation: "Obre la navegació",
@@ -935,7 +940,6 @@ export const caES = {
     testConnection: "Prova la connexió",
     testSuccess: "Connexió correcta",
     testFailed: "Ha fallat la prova de connexió",
-    syncModels: "Sincronitza els models",
     syncSuccess: "S'han descobert {discovered} models, s'han afegit {new} de nous",
     syncNoNew: "S'han descobert {count} models, tots ja estan registrats",
     syncFailed: "Ha fallat la sincronització dels models",

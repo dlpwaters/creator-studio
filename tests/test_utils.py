@@ -135,6 +135,20 @@ class TestTextUtilities:
 class TestTokenUtilities:
     """Test suite for token counting fallback behavior."""
 
+    @pytest.mark.parametrize("fragment", ["中文內容", "longwordwithoutspaces", "🎉"])
+    def test_offline_estimate_grows_for_text_without_spaces(self, fragment):
+        from unittest.mock import patch
+
+        with patch("tiktoken.get_encoding", side_effect=OSError("offline")):
+            small = token_count(fragment)
+            large = token_count(fragment * 100)
+            assert small > 0
+            assert large >= small * 50
+            assert token_count("") == 0
+
+    def test_token_count_accepts_literal_special_tokens_in_sources(self):
+        assert token_count("Documentation example: <|endoftext|>") > 0
+
     def test_token_count_fallback(self):
         """Test fallback when tiktoken raises an error."""
         from unittest.mock import patch

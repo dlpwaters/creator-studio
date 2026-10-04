@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const bnIN = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "বিষয়বস্তুতে যান",
     openNavigation: "নেভিগেশন খুলুন",
@@ -936,7 +941,6 @@ export const bnIN = {
     testConnection: "সংযোগ পরীক্ষা",
     testSuccess: "সংযোগ সফল",
     testFailed: "সংযোগ পরীক্ষা ব্যর্থ",
-    syncModels: "মডেল সিঙ্ক করুন",
     syncSuccess: "{discovered}টি মডেল আবিষ্কৃত, {new}টি নতুন যোগ",
     syncNoNew: "{count}টি মডেল আবিষ্কৃত, সব ইতিমধ্যে নিবন্ধিত",
     syncFailed: "মডেল সিঙ্ক করতে ব্যর্থ",

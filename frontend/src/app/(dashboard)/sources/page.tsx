@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { sourcesApi } from '@/lib/api/sources'
 import { SourceListResponse } from '@/lib/types/api'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -39,22 +40,24 @@ export default function SourcesPage() {
   const offsetRef = useRef(0)
   const loadingMoreRef = useRef(false)
   const hasMoreRef = useRef(true)
+  const requestVersionRef = useRef(0)
   const PAGE_SIZE = 30
 
   const fetchSources = useCallback(async (reset = false) => {
+    if (!reset && (loadingMoreRef.current || !hasMoreRef.current)) return
+    if (reset) requestVersionRef.current += 1
+    const requestVersion = requestVersionRef.current
+    loadingMoreRef.current = true
     try {
-      // Check flags before proceeding
-      if (!reset && (loadingMoreRef.current || !hasMoreRef.current)) {
-        return
-      }
-
       if (reset) {
         setError(null)
         setLoading(true)
+        setSelectedIndex(0)
         offsetRef.current = 0
         setSources([])
         hasMoreRef.current = true
       } else {
+        setError(null)
         loadingMoreRef.current = true
         setLoadingMore(true)
       }
@@ -65,6 +68,9 @@ export default function SourcesPage() {
         sort_by: sortBy,
         sort_order: sortOrder,
       })
+
+      // A sort change may have started another request while this page loaded.
+      if (requestVersion !== requestVersionRef.current) return
 
       if (reset) {
         setSources(data)
@@ -77,13 +83,16 @@ export default function SourcesPage() {
       hasMoreRef.current = hasMoreData
       offsetRef.current += data.length
     } catch (err) {
+      if (requestVersion !== requestVersionRef.current) return
       console.error('Failed to fetch sources:', err)
       setError(t('sources.failedToLoad'))
       toast.error(t('sources.failedToLoad'))
     } finally {
-      setLoading(false)
-      setLoadingMore(false)
-      loadingMoreRef.current = false
+      if (requestVersion === requestVersionRef.current) {
+        setLoading(false)
+        setLoadingMore(false)
+        loadingMoreRef.current = false
+      }
     }
   }, [sortBy, sortOrder, t])
 
@@ -93,15 +102,9 @@ export default function SourcesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, sortOrder])
 
-  useEffect(() => {
-    // Focus the table when component mounts or sources change
-    if (sources.length > 0 && tableRef.current) {
-      tableRef.current.focus()
-    }
-  }, [sources])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const handleTableKeyDown = (e: React.KeyboardEvent<HTMLTableElement>) => {
+      // Links, sort buttons, and dialogs keep their own native keyboard behavior.
+      if (e.target !== e.currentTarget || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
       if (sources.length === 0) return
 
       switch (e.key) {
@@ -141,11 +144,7 @@ export default function SourcesPage() {
           setTimeout(() => scrollToSelectedRow(lastIndex), 0)
           break
       }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [sources, selectedIndex, router])
+  }
 
   const scrollToSelectedRow = (index: number) => {
     const scrollContainer = scrollContainerRef.current
@@ -246,6 +245,8 @@ export default function SourcesPage() {
       toast.success(t('sources.deleteSuccess'))
       // Remove the deleted source from the list
       setSources(prev => prev.filter(s => s.id !== deleteDialog.source?.id))
+      offsetRef.current = Math.max(0, offsetRef.current - 1)
+      setSelectedIndex(prev => Math.max(0, Math.min(prev, sources.length - 2)))
       setDeleteDialog({ open: false, source: null })
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }, message?: string };
@@ -264,7 +265,7 @@ export default function SourcesPage() {
     )
   }
 
-  if (error) {
+  if (error && sources.length === 0) {
     return (
       <AppShell>
         <div role="alert" className="flex h-full flex-col items-center justify-center gap-4 p-6">
@@ -303,25 +304,19 @@ export default function SourcesPage() {
           <table
             ref={tableRef}
             tabIndex={0}
-            className="w-full min-w-[800px] outline-none table-fixed"
+            onKeyDown={handleTableKeyDown}
+            aria-label={t('sources.allSources')}
+            className="w-full outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <colgroup>
-              <col className="w-[120px]" />
-              <col className="w-auto" />
-              <col className="w-[140px]" />
-              <col className="w-[100px]" />
-              <col className="w-[100px]" />
-              <col className="w-[100px]" />
-            </colgroup>
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="hidden h-12 w-28 px-4 text-left align-middle font-medium text-muted-foreground sm:table-cell">
                   {t('common.type')}
                 </th>
                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
                   {t('common.title')}
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground hidden sm:table-cell">
+                <th className="h-12 w-40 px-4 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -346,7 +341,7 @@ export default function SourcesPage() {
                 <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground hidden lg:table-cell">
                   {t('sources.embedded')}
                 </th>
-                <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+                <th className="h-12 w-16 px-3 text-right align-middle font-medium text-muted-foreground sm:w-24">
                   {t('common.actions')}
                 </th>
               </tr>
@@ -364,7 +359,7 @@ export default function SourcesPage() {
                       : "hover:bg-muted/50"
                   )}
                 >
-                  <td className="h-12 px-4">
+                  <td className="hidden h-12 px-4 sm:table-cell">
                     <div className="flex items-center gap-2">
                       {getSourceIcon(source)}
                       <Badge variant="secondary" className="text-xs">
@@ -373,18 +368,19 @@ export default function SourcesPage() {
                     </div>
                   </td>
                   <td className="h-12 px-4">
-                    <div className="flex flex-col overflow-hidden">
-                      <span className="font-medium truncate">
+                    <div className="flex flex-col gap-1 py-3">
+                      <Link href={`/sources/${encodeURIComponent(source.id)}`} onClick={event => event.stopPropagation()} className="rounded-sm font-medium break-words [overflow-wrap:anywhere] outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring">
                         {source.title || t('sources.untitledSource')}
-                      </span>
+                      </Link>
+                      <span className="text-xs text-muted-foreground sm:hidden">{getSourceType(source)}</span>
                       {source.asset?.url && (
-                        <span className="text-xs text-muted-foreground truncate">
+                        <span className="max-w-prose text-xs text-muted-foreground break-all">
                           {source.asset.url}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="h-12 px-4 text-muted-foreground text-sm hidden sm:table-cell">
+                  <td className="h-12 px-4 text-muted-foreground text-sm hidden md:table-cell">
                     {formatDistanceToNow(new Date(source.created), { 
                       addSuffix: true,
                       locale: getDateLocale(language)
@@ -398,10 +394,11 @@ export default function SourcesPage() {
                       {source.embedded ? t('sources.yes') : t('sources.no')}
                     </Badge>
                   </td>
-                  <td className="h-12 px-4 text-right">
+                  <td className="h-12 px-3 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label={`${t('common.delete')}: ${source.title || t('sources.untitledSource')}`}
                       onClick={(e) => handleDeleteClick(e, source)}
                       className="text-destructive hover:text-destructive"
                     >
@@ -422,6 +419,12 @@ export default function SourcesPage() {
               )}
             </tbody>
           </table>
+          {error && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-t p-4">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button variant="outline" onClick={() => fetchSources(false)}>{t('common.retry')}</Button>
+            </div>
+          )}
         </div>
       </div>
 

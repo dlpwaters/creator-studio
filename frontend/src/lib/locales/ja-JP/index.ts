@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const jaJP = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "本文へ移動",
     openNavigation: "ナビゲーションを開く",
@@ -935,7 +940,6 @@ export const jaJP = {
     testConnection: "接続テスト",
     testSuccess: "接続成功",
     testFailed: "接続テストに失敗",
-    syncModels: "モデル同期",
     syncSuccess: "{discovered} モデルを発見、{new} 個を新規追加",
     syncNoNew: "{count} モデルを発見、すべて登録済み",
     syncFailed: "モデルの同期に失敗",

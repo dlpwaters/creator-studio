@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const ptBR = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "Pular para o conteúdo",
     openNavigation: "Abrir navegação",
@@ -935,7 +940,6 @@ export const ptBR = {
     testConnection: "Testar Conexão",
     testSuccess: "Conexão bem-sucedida",
     testFailed: "Falha no teste de conexão",
-    syncModels: "Sincronizar Modelos",
     syncSuccess: "Descobertos {discovered} modelos, {new} novos adicionados",
     syncNoNew: "Descobertos {count} modelos, todos já registrados",
     syncFailed: "Falha ao sincronizar modelos",

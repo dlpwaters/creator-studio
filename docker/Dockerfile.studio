@@ -1,0 +1,33 @@
+# Preserve the installed backend, its dependencies, and its migration version.
+# For local upgrades pass the exact current image as BACKEND_IMAGE.
+ARG BACKEND_IMAGE=lfnovo/open_notebook:v1-latest
+FROM node:22-slim AS frontend-builder
+WORKDIR /frontend
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM ${BACKEND_IMAGE} AS runtime
+ARG SOURCE_REVISION=development
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends espeak-ng fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+# These are direct dependencies in the source checkout. Refuse an incompatible
+# installed base rather than mutating its dependency lock at deployment time.
+RUN /app/.venv/bin/python -c "import PIL, pptx; import shutil; assert shutil.which('ffmpeg'), 'ffmpeg is required'"
+COPY api/studio_models.py api/studio_service.py api/studio_exports.py /app/api/
+COPY api/routers/studio.py api/routers/studio_exports.py /app/api/routers/
+COPY open_notebook/utils/token_utils.py /app/open_notebook/utils/token_utils.py
+COPY scripts/install_studio_overlay.py /app/scripts/install_studio_overlay.py
+RUN /app/.venv/bin/python /app/scripts/install_studio_overlay.py /app/api/main.py \
+    --provision /app/open_notebook/ai/provision.py
+RUN rm -rf /app/frontend
+COPY --from=frontend-builder /frontend/.next/standalone /app/frontend/
+COPY --from=frontend-builder /frontend/.next/static /app/frontend/.next/static
+COPY --from=frontend-builder /frontend/public /app/frontend/public
+COPY frontend/start-server.js /app/frontend/start-server.js
+LABEL org.opencontainers.image.title="Open Notebook research creation studio" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}"

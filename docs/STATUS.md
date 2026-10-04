@@ -1,31 +1,47 @@
-# Frontend workspace status
+# Research and creation workspace status
 
-The research workspace has a clearer notebook library, name/description search,
-recent-update or name sorting, persistent tile/list views, and direct creation
-actions. Desktop notebooks show Sources, Chat, and Notes together. Smaller screens
-use one active tab and a navigation drawer. Chat starters prepare an editable draft.
+The research UI now connects notebooks to a Creation Studio. Users select sources
+and notes, generate local excerpts or an explicit AI draft, review and edit it,
+then export or study it. Seven formats cover slides, videos, briefs, quizzes,
+flashcards, concept groups, and timelines. Exports include editable PowerPoint,
+standalone HTML, Markdown, JSON, captioned MP4, and SRT. Optional local synthetic
+narration requires no speech-provider call.
 
-The implementation uses the existing Next.js, Tailwind, Radix, API, and localization
-stack. The new interface labels are available in all 14 supported locales.
+Notebook readiness identifies missing text and failed/pending ingestion. Provider
+setup explains encrypted credentials, testing, model discovery, and defaults.
+The Sources table supports smaller screens, native keyboard controls, and safe
+pagination when sorting. Authentication retains notebook deep links. Token
+estimation handles long text without spaces. Existing APIs and data remain in place.
 
-## Verified checks
+## Verification
 
-- Frontend: 68 tests across 13 files pass.
-- ESLint: no errors or new warnings; six existing warnings remain.
-- TypeScript checking and the production build pass.
-- Development and compiled production previews load real data through the existing
-  backend proxy.
-- Desktop and phone checks cover navigation, search, view controls, creation forms,
-  themes, and notebook tabs. The checked screens have no horizontal page overflow
-  or automated accessibility violations.
-- The development-image workflow keeps fork builds separate from upstream registry
-  publication. Its publication condition was checked for fork pushes, upstream
-  pull requests, and upstream main pushes.
+- Backend: the combined suite and focused export/privacy regressions passed.
+- Frontend: 146 tests passed across 26 files.
+- TypeScript passed; ESLint has no errors and four existing warnings.
+- Editable PowerPoint rendered in LibreOffice. Silent and narrated MP4 passed
+  ffprobe checks. Export previews were visually inspected.
+- The development browser created and saved a real source-excerpt slide draft,
+  with no browser errors or horizontal overflow at desktop size.
+- Draft recovery, stale-save conflicts, and navigation confirmation have regression
+  coverage. The desktop Studio screen has no automated axe violations.
+- Final production build, deployed browser checks, and remote CI are pending.
 
-## Running this version
+## Deployment and continuity
 
-See [the frontend preview instructions](../README.dev.md#frontend-workspace-preview).
-Publishing or merging source does not update an installed upstream Docker image.
-To use the redesign in a container, build and deploy an image from this checkout
-as a separate deployment step. Existing data volumes and provider configuration
-should be retained.
+The local installation uses a newer backend than this checkout. The additive
+`docker/Dockerfile.studio` preserves that backend and its migrations/dependencies,
+adds Studio routes and exports, and rebuilds the frontend. Keep the previous image
+as rollback and preserve Compose mounts, encryption, environment, and port bindings.
+See [Creation Studio](CREATION_STUDIO.md) for usage, limits, and the upgrade recipe.
+
+Work is on `feat/research-creation-studio`; the default branch is unchanged. Local
+Compose customization and the private machine guide are excluded from commits.
+Deployment evidence and rollback metadata stay ignored under `.harness/deploy/`.
+
+## Acceptance limits
+
+AI output requires source review; provenance does not prove each claim. New Studio
+copy uses English fallback in all locales. Local voice and font coverage vary by
+language, and captions are not forced word alignment. This release uses existing
+installation-wide authentication. Final deployed workflow and provider smoke testing
+are pending.
