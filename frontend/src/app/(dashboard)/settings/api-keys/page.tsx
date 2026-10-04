@@ -142,7 +142,7 @@ const TYPE_COLORS: Record<ModelType, string> = {
   speech_to_text: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
 }
 
-const TYPE_COLOR_INACTIVE = 'bg-muted text-muted-foreground opacity-50'
+const TYPE_COLOR_INACTIVE = 'bg-muted text-muted-foreground'
 
 const TYPE_LABELS: Record<ModelType, string> = {
   language: 'Language',
@@ -1028,7 +1028,7 @@ function ProviderSection({
   const activeTypes = new Set(providerModels.map(m => m.type))
 
   return (
-    <Card id={`provider-${provider}`} className={!hasCredentials ? 'opacity-80 scroll-mt-6' : 'scroll-mt-6'}>
+    <Card id={`provider-${provider}`} className="scroll-mt-6">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-wrap">
@@ -1244,7 +1244,7 @@ function DefaultModelSelectors({
                     </SelectContent>
                   </Select>
                   {!config.required && currentValue && (
-                    <Button variant="ghost" size="icon" onClick={() => handleChange(config.key, "")} className="h-8 w-8 shrink-0">
+                    <Button variant="ghost" size="icon" aria-label={`${t('common.remove')}: ${config.label}`} onClick={() => handleChange(config.key, "")} className="h-8 w-8 shrink-0">
                       <X className="h-3 w-3" />
                     </Button>
                   )}
@@ -1296,7 +1296,7 @@ function DefaultModelSelectors({
                         </SelectContent>
                       </Select>
                       {!config.required && currentValue && (
-                        <Button variant="ghost" size="icon" onClick={() => handleChange(config.key, "")} className="h-8 w-8 shrink-0">
+                        <Button variant="ghost" size="icon" aria-label={`${t('common.remove')}: ${config.label}`} onClick={() => handleChange(config.key, "")} className="h-8 w-8 shrink-0">
                           <X className="h-3 w-3" />
                         </Button>
                       )}

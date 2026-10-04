@@ -447,6 +447,43 @@ def test_unknown_export_style_rejected(artifact):
         exports.export_artifact(artifact, "html")
 
 
+def _contrast_ratio(foreground, background):
+    def luminance(color):
+        components = [int(color[offset : offset + 2], 16) / 255 for offset in (1, 3, 5)]
+        linear = [
+            channel / 12.92
+            if channel <= 0.04045
+            else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in components
+        ]
+        return sum(
+            channel * weight
+            for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722))
+        )
+
+    dark, light = sorted((luminance(foreground), luminance(background)))
+    return (light + 0.05) / (dark + 0.05)
+
+
+@pytest.mark.parametrize("style", ["editorial", "chalkboard", "minimal"])
+@pytest.mark.parametrize("text_role", ["ink", "muted", "accent"])
+def test_palette_normal_text_has_wcag_aa_contrast_on_export_surfaces(
+    artifact, style, text_role
+):
+    theme = exports.STYLE_THEMES[style]
+    # Muted colors label slides and sources; accent colors label PPTX page counts.
+    for surface in ("background", "canvas", "panel"):
+        assert _contrast_ratio(theme[text_role], theme[surface]) >= 4.5, (
+            style,
+            text_role,
+            surface,
+        )
+    artifact["style"] = style
+    document = exports.export_artifact(artifact, "html").data.decode()
+    assert f".eyebrow{{color:{theme['muted']};" in document
+    assert "#627980" not in document and "#bd6b45" not in document
+
+
 @pytest.mark.parametrize(
     "language, expected",
     [
