@@ -1,4 +1,4 @@
-# Research and creation workspace status
+# Creator Studio status
 
 The research UI now connects notebooks to a Creation Studio. Users select sources
 and notes, generate local excerpts or an explicit AI draft, review and edit it,
@@ -58,6 +58,12 @@ ignore callbacks from unmounted reviews.
 - GitHub backend/frontend test jobs and the regular Docker image build passed.
   CI installs renderer prerequisites so
   video and narration checks exercise the actual tools.
+- The fresh-install README recipe built the standard source image and started an
+  isolated empty database, API, and frontend. Local note-based drafts exported
+  real PowerPoint and MP4 files without an AI provider. Compose validation checked
+  missing-secret rejection, localhost bindings, and a private database network.
+  Secret creation preserved an existing `.env` and used mode 600. Relative links,
+  heading anchors, shell syntax, and GitHub Markdown rendering passed.
 
 ## Deployment and continuity
 
@@ -75,9 +81,13 @@ mounts, and restart policies. The new **Studio tour** notebook holds synthetic
 sample material and nine example artifacts. Local example exports are in
 `data/studio-showcase/` and are excluded from Git.
 
-Work is on `feat/research-creation-studio` in [PR #2](https://github.com/dlpwaters/open-notebook/pull/2).
-The default branch is unchanged. Local Compose customization and the private
-machine guide are excluded from commits.
+The GitHub project is [dlpwaters/creator-studio](https://github.com/dlpwaters/creator-studio).
+All Studio application changes are merged into `main` through
+[PR #2](https://github.com/dlpwaters/creator-studio/pull/2), merge commit
+`e257353a84534045b5ec2ff72f373f4ff4abb565`. The README describes this fork's
+features and provides a fresh-install Compose example that builds the actual
+Creator Studio source. Upstream package and environment names remain compatible.
+Local Compose customization and the private machine guide are excluded from commits.
 Deployment evidence and rollback metadata stay ignored under `.harness/deploy/`.
 On this machine, run `.harness/deploy/studio/rollback.sh` from the checkout to
 restore the retained previous application image without recreating the database.

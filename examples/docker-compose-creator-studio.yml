@@ -1,0 +1,50 @@
+# Fresh Creator Studio installation. Build creator-studio:local from this fork first.
+# Run from the repository root with --env-file .env -p creator-studio.
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    command:
+      - start
+      - --log
+      - info
+      - --user
+      - ${SURREAL_USER:-creator}
+      - --pass
+      - ${SURREAL_PASSWORD:?Set SURREAL_PASSWORD in .env}
+      - rocksdb:/mydata/mydatabase.db
+    user: root
+    volumes:
+      - surreal_data:/mydata
+    restart: unless-stopped
+
+  open_notebook:
+    image: ${CREATOR_STUDIO_IMAGE:-creator-studio:local}
+    pull_policy: never
+    ports:
+      - "127.0.0.1:${CREATOR_STUDIO_UI_PORT:-8502}:8502"
+      - "127.0.0.1:${CREATOR_STUDIO_API_PORT:-5055}:5055"
+    environment:
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?Set OPEN_NOTEBOOK_ENCRYPTION_KEY in .env}
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8502,http://127.0.0.1:8502}
+      SURREAL_URL: ws://surrealdb:8000/rpc
+      SURREAL_USER: ${SURREAL_USER:-creator}
+      SURREAL_PASSWORD: ${SURREAL_PASSWORD:?Set SURREAL_PASSWORD in .env}
+      SURREAL_NAMESPACE: open_notebook
+      SURREAL_DATABASE: open_notebook
+      API_URL: ${API_URL:-}
+    volumes:
+      - notebook_data:/app/data
+    depends_on:
+      - surrealdb
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:5055/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  surreal_data:
+  notebook_data:

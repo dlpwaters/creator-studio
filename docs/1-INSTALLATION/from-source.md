@@ -1,35 +1,35 @@
-# From Source Installation
+# Creator Studio from source
 
-Clone the repository and run locally. **For developers and contributors.**
+Clone Creator Studio and run the API, worker, and frontend locally.
+**For developers and contributors.** For a new Docker installation, use the
+[README recipe](../../README.md#get-started), which includes export prerequisites.
 
 ## Prerequisites
 
-- **Python 3.11+** - [Download](https://www.python.org/)
-- **Node.js 18+** - [Download](https://nodejs.org/)
+- **Python 3.11 or 3.12** - [Download](https://www.python.org/)
+- **Node.js 22** - [Download](https://nodejs.org/)
 - **Git** - [Download](https://git-scm.com/)
 - **Docker** (for SurrealDB) - [Download](https://docker.com/)
 - **uv** (Python package manager) - `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- API key from OpenAI or similar (or use Ollama for free)
+- A configured model for AI features; source-excerpt Studio drafts make no model call
+- ffmpeg, DejaVu fonts, and espeak-ng for local video/narration exports
 
-## Quick Setup (10 minutes)
+## Setup
 
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/lfnovo/open-notebook.git
-cd open-notebook
+git clone https://github.com/dlpwaters/creator-studio.git
+cd creator-studio
 
-# If you forked it:
-git clone https://github.com/YOUR_USERNAME/open-notebook.git
-cd open-notebook
+# Optional: track the original project separately
 git remote add upstream https://github.com/lfnovo/open-notebook.git
 ```
 
 ### 2. Install Python Dependencies
 
 ```bash
-uv sync
-uv pip install python-magic
+uv sync --frozen
 ```
 
 #### 2.1 Alternative: Conda Setup (Optional)
@@ -45,12 +45,18 @@ conda activate open-notebook
 conda install -c conda-forge uv nodejs -y
 
 # Sync dependencies
-uv sync
+uv sync --frozen
 ```
 
 > **Note**: Installing `uv` inside your Conda environment ensures that commands like `make start-all` and `make api` continue to work seamlessly.
 
 ### 3. Start SurrealDB
+
+The root Compose file is inherited from upstream. `make database` starts only its
+database service, with development credentials and host port 8000. Keep that
+database on localhost: change its port mapping to `127.0.0.1:8000:8000` before
+starting it on a shared machine. Preserve database credentials when working with
+an established installation.
 
 ```bash
 # Terminal 1
@@ -61,12 +67,19 @@ make database
 ### 4. Set Environment Variables
 
 ```bash
-cp .env.example .env
-# Edit .env and set:
-# OPEN_NOTEBOOK_ENCRYPTION_KEY=my-secret-key
+test -e .env || (umask 077; cp .env.example .env)
+# Edit .env and set a strong OPEN_NOTEBOOK_ENCRYPTION_KEY.
+# For the host API, use SURREAL_URL=ws://127.0.0.1:8000/rpc.
+# Match SURREAL_USER and SURREAL_PASSWORD to your database.
+# Restrict CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000.
 ```
 
 After starting the app, configure AI providers via the **Manage → Models** UI in the browser.
+
+Configure `.env` for a host connection, not the `surrealdb` container hostname
+used inside Docker. Preserve existing encryption keys when working with an
+established installation. Set `OPEN_NOTEBOOK_PASSWORD` if password protection
+is needed; the API and frontend use the same installation password.
 
 ### 5. Start API
 
@@ -95,7 +108,7 @@ make worker
 
 ```bash
 # Terminal 4
-cd frontend && npm install && npm run dev
+cd frontend && npm ci && npm run dev
 ```
 
 ### 8. Access
@@ -146,8 +159,9 @@ open http://localhost:5055/docs
 # Check database migrations
 # (Auto-run on API startup)
 
-# Clean up
-make clean
+# Stop foreground development processes with Ctrl+C in their terminals.
+# Stop the database without deleting its data:
+docker compose stop surrealdb
 ```
 
 ---
@@ -192,4 +206,5 @@ uv run uvicorn api.main:app --port 5056
 ## Getting Help
 
 - **Discord**: [Community](https://discord.gg/37XJPXfz2w)
-- **Issues**: [GitHub Issues](https://github.com/lfnovo/open-notebook/issues)
+- **Creator Studio issues**: [GitHub Issues](https://github.com/dlpwaters/creator-studio/issues)
+- **Studio workflow and limits**: [Creation Studio](../CREATION_STUDIO.md)
