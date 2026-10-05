@@ -62,7 +62,11 @@ export function ArtifactLibrary({
   const [expanded, setExpanded] = useState(!selectedId)
   useEffect(() => {
     setExpanded(!selectedId)
-    if (selectedId && browserRef.current?.contains(document.activeElement)) {
+    if (
+      selectedId &&
+      (document.activeElement === document.body ||
+        browserRef.current?.contains(document.activeElement))
+    ) {
       toggleRef.current?.focus()
     }
   }, [selectedId])

@@ -148,6 +148,12 @@ describe('ArtifactLibrary', () => {
       screen.getByRole('button', { name: 'studio.libraryBrowse' })
     ).toHaveAttribute('aria-controls', controlsId)
     expect(document.getElementById(controlsId)).not.toBeVisible()
+    screen.getByRole('button', { name: 'studio.libraryBrowse' }).blur()
+    expect(document.activeElement).toBe(document.body)
+    result.refreshRender({ selectedId: 'artifact-three' })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    ).toHaveFocus()
     result.refreshRender({ selectedId: undefined })
     expect(
       screen.getByRole('button', { name: 'studio.libraryHide' })
