@@ -50,7 +50,9 @@ prevent recovery, without interrupting editing.
 The saved-work library searches titles and audience text, filters by format, and
 sorts by updated date, creation date, or title. It shows 12 summaries per page and
 loads full content when you open a draft. **Refresh** updates the library without
-replacing your unsaved edits. **Make a copy** creates a separate draft; the original
+replacing your unsaved edits. Opening a draft collapses the library so review stays
+within reach. **Browse saved work** reopens it with your search and filters intact.
+**Make a copy** creates a separate draft; the original
 keeps its content and timestamps. Save or discard your edits before copying.
 
 Export **JSON** to move a draft between installations. In the destination notebook,

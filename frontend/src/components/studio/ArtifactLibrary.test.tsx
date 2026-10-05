@@ -45,7 +45,7 @@ function setup(
   const onSelect = vi.fn(),
     onCreate = vi.fn(),
     onImport = vi.fn()
-  const properties = {
+  let properties = {
     notebookId: 'notebook:one',
     disabled: false,
     onSelect,
@@ -59,7 +59,12 @@ function setup(
     onSelect,
     onCreate,
     onImport,
-    refreshRender: () => rendered.rerender(<ArtifactLibrary {...properties} />)
+    refreshRender: (
+      changes: Partial<React.ComponentProps<typeof ArtifactLibrary>> = {}
+    ) => {
+      properties = { ...properties, ...changes }
+      rendered.rerender(<ArtifactLibrary {...properties} />)
+    }
   }
 }
 const lastOptions = () => vi.mocked(useStudioLibrary).mock.calls.at(-1)![1]!
@@ -82,6 +87,105 @@ afterEach(() => {
   vi.useRealTimers()
 })
 describe('ArtifactLibrary', () => {
+  it('collapses on parent selection, preserves filters when reopened, and collapses for a different draft', () => {
+    vi.useFakeTimers()
+    const result = setup()
+    const disclosure = screen.getByRole('button', {
+      name: 'studio.libraryHide'
+    })
+    const controlsId = disclosure.getAttribute('aria-controls')!
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.change(screen.getByLabelText('studio.librarySearch'), {
+      target: { value: 'ocean' }
+    })
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    fireEvent.change(screen.getByLabelText('studio.libraryFormat'), {
+      target: { value: 'video' }
+    })
+    fireEvent.change(screen.getByLabelText('studio.librarySort'), {
+      target: { value: 'title' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'studio.libraryNext' }))
+    screen.getByLabelText('studio.librarySearch').focus()
+    result.refreshRender({ selectedId: summary.id })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    ).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    ).toHaveFocus()
+    expect(document.getElementById(controlsId)).not.toBeVisible()
+    expect(screen.getByRole('button', { name: 'studio.create' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryImport' })
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'studio.refresh' })).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'studio.libraryResults'
+    )
+    expect(lastOptions()).toMatchObject({
+      query: 'ocean',
+      kind: 'video',
+      sort: 'title',
+      page: 2
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    )
+    expect(document.getElementById(controlsId)).toBeVisible()
+    expect(screen.getByLabelText('studio.librarySearch')).toHaveValue('ocean')
+    expect(screen.getByLabelText('studio.libraryFormat')).toHaveValue('video')
+    expect(screen.getByLabelText('studio.librarySort')).toHaveValue('title')
+    expect(lastOptions().page).toBe(2)
+    result.refreshRender({ selectedId: summary.id })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryHide' })
+    ).toHaveAttribute('aria-controls', controlsId)
+    result.refreshRender({ selectedId: 'artifact-two' })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    ).toHaveAttribute('aria-controls', controlsId)
+    expect(document.getElementById(controlsId)).not.toBeVisible()
+    result.refreshRender({ selectedId: undefined })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryHide' })
+    ).toHaveAttribute('aria-expanded', 'true')
+  })
+  it('retains visible errors and pending locks while the library is collapsed', () => {
+    response = {
+      ...response,
+      isError: true,
+      error: new Error('Refresh failed')
+    }
+    const result = setup({ selectedId: summary.id })
+    expect(screen.getByRole('alert')).toHaveTextContent('Refresh failed')
+    fireEvent.click(screen.getByRole('button', { name: 'studio.retry' }))
+    expect(response.refetch).toHaveBeenCalledTimes(1)
+    response.isFetching = true
+    result.refreshRender({ disabled: true })
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'studio.create' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'studio.libraryImport' })
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'studio.refresh' })
+    ).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'studio.libraryResults'
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'studio.libraryRefreshing'
+    )
+    expect(
+      screen.queryByRole('button', { name: 'studio.retry' })
+    ).not.toBeInTheDocument()
+  })
+
   it('requests bounded summaries and passes selection without fetching full card data', () => {
     const result = setup({ selectedId: summary.id })
     expect(useStudioLibrary).toHaveBeenCalledWith(
@@ -92,6 +196,9 @@ describe('ArtifactLibrary', () => {
         page: 1,
         page_size: 12
       })
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'studio.libraryBrowse' })
     )
     const item = screen.getByRole('button', { name: /Ocean research/ })
     expect(item).toHaveAttribute('aria-pressed', 'true')

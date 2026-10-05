@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import {
   ArchiveRestore,
   ArrowLeft,
@@ -9,7 +9,8 @@ import {
   FolderOpen,
   Plus,
   RefreshCw,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useStudioLibrary } from '@/lib/hooks/studio'
@@ -55,6 +56,16 @@ export function ArtifactLibrary({
 }) {
   const { t, language } = useTranslation()
   const controlId = useId()
+  const browserId = `${controlId}-browser`
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const browserRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(!selectedId)
+  useEffect(() => {
+    setExpanded(!selectedId)
+    if (selectedId && browserRef.current?.contains(document.activeElement)) {
+      toggleRef.current?.focus()
+    }
+  }, [selectedId])
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<StudioKind | ''>('')
@@ -134,128 +145,39 @@ export function ArtifactLibrary({
           </Button>
         </div>
       </header>
-      <fieldset
-        disabled={disabled}
-        className="grid min-w-0 gap-3 sm:grid-cols-2"
-      >
-        <div className="sm:col-span-2">
-          <label
-            htmlFor={`${controlId}-search`}
-            className="mb-2 block text-xs font-medium text-muted-foreground"
-          >
-            {t('studio.librarySearch')}
-          </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <input
-              id={`${controlId}-search`}
-              type="search"
-              maxLength={200}
-              value={searchInput}
-              onChange={(event) =>
-                setSearchInput(event.target.value.slice(0, 200))
-              }
-              placeholder={t('studio.librarySearchPlaceholder')}
-              className={`${studioFieldClass} pl-9`}
-            />
-          </div>
-        </div>
-        <div>
-          <label
-            htmlFor={`${controlId}-kind`}
-            className="mb-2 block text-xs font-medium text-muted-foreground"
-          >
-            {t('studio.libraryFormat')}
-          </label>
-          <select
-            id={`${controlId}-kind`}
-            value={kind}
-            className={studioFieldClass}
-            onChange={(event) => {
-              setKind(event.target.value as StudioKind | '')
-              setPage(1)
-            }}
-          >
-            <option value="">{t('studio.libraryAllFormats')}</option>
-            {studioFormats.map((format) => (
-              <option key={format.kind} value={format.kind}>
-                {t(format.label)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor={`${controlId}-sort`}
-            className="mb-2 block text-xs font-medium text-muted-foreground"
-          >
-            {t('studio.librarySort')}
-          </label>
-          <select
-            id={`${controlId}-sort`}
-            value={sort}
-            className={studioFieldClass}
-            onChange={(event) => {
-              setSort(
-                event.target.value as NonNullable<StudioLibraryQuery['sort']>
-              )
-              setPage(1)
-            }}
-          >
-            <option value="updated">{t('studio.librarySortUpdated')}</option>
-            <option value="created">{t('studio.librarySortCreated')}</option>
-            <option value="title">{t('studio.librarySortTitle')}</option>
-          </select>
-        </div>
-      </fieldset>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           type="button"
-          variant={scope === 'orphaned' ? 'secondary' : 'ghost'}
+          id={`${controlId}-toggle`}
+          ref={toggleRef}
+          variant="ghost"
           size="sm"
-          className="h-auto min-h-8 whitespace-normal text-left"
           disabled={disabled}
-          aria-pressed={scope === 'orphaned'}
-          onClick={changeScope}
+          aria-expanded={expanded}
+          aria-controls={browserId}
+          onClick={() => setExpanded((value) => !value)}
         >
-          <ArchiveRestore className="size-4" />
-          {t(
-            scope === 'orphaned'
-              ? 'studio.libraryReturnNotebook'
-              : 'studio.libraryRecover'
-          )}
+          <ChevronDown
+            className={`size-4 transition-transform motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`}
+          />
+          {t(expanded ? 'studio.libraryHide' : 'studio.libraryBrowse')}
         </Button>
-        {hasFilters && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled}
-            onClick={clearFilters}
-          >
-            {t('studio.libraryResetFilters')}
-          </Button>
-        )}
-      </div>
-      {scope === 'orphaned' && (
-        <p className="rounded-lg bg-accent/50 p-3 text-xs leading-relaxed text-muted-foreground">
-          {t('studio.libraryRecoveryHelp')}
-        </p>
-      )}
-      <div
-        role="status"
-        className="min-h-5 text-xs tabular-nums text-muted-foreground"
-      >
-        {library.isLoading && !data
-          ? t('studio.libraryLoading')
-          : library.isFetching
-            ? t('studio.libraryRefreshing')
-            : data
-              ? t('studio.libraryResults', {
-                  count: data.filtered_total,
-                  total: data.total
-                })
+        <div
+          role="status"
+          className="text-xs tabular-nums text-muted-foreground"
+        >
+          {data
+            ? t('studio.libraryResults', {
+                count: data.filtered_total,
+                total: data.total
+              })
+            : library.isLoading
+              ? t('studio.libraryLoading')
               : null}
+          {data && library.isFetching && (
+            <span className="ml-2">{t('studio.libraryRefreshing')}</span>
+          )}
+        </div>
       </div>
       {library.isError && (
         <StudioError
@@ -264,90 +186,110 @@ export function ArtifactLibrary({
           retry={!disabled ? () => void library.refetch() : undefined}
         />
       )}
-      {library.isLoading && !data ? (
-        <StudioSkeleton />
-      ) : data && data.items.length > 0 ? (
-        <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2 sm:gap-3">
-          {data.items.map((summary) => {
-            const format = studioFormats.find(
-              (item) => item.kind === summary.kind
-            )
-            const Icon = format?.icon ?? FolderOpen
-            const updated = displayDate(summary.updated_at, language)
-            return (
-              <li key={summary.id} className="min-w-0">
-                <button
-                  type="button"
-                  disabled={disabled || library.isFetching}
-                  aria-pressed={selectedId === summary.id}
-                  onClick={() => onSelect(summary)}
-                  className={`flex h-full w-full min-w-0 items-start gap-3 rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 ${selectedId === summary.id ? 'border-primary bg-accent/50' : 'bg-card hover:bg-muted'}`}
-                >
-                  <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block break-words text-sm font-medium leading-relaxed">
-                      {summary.title}
-                    </span>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                      {format ? t(format.label) : summary.kind} ·{' '}
-                      {t('studio.sections', { count: summary.card_count })} ·{' '}
-                      {t(
-                        summary.generation === 'ai'
-                          ? 'studio.aiDraft'
-                          : 'studio.sourceExcerpts'
-                      )}
-                    </span>
-                    {updated && (
-                      <time
-                        dateTime={summary.updated_at}
-                        className="mt-2 block text-xs text-muted-foreground"
-                      >
-                        {t('studio.libraryUpdated', { date: updated })}
-                      </time>
-                    )}
-                    {summary.reference_status === 'snapshot' && (
-                      <span className="mt-2 block text-xs leading-relaxed text-primary">
-                        {t('studio.librarySavedReferences')}
-                      </span>
-                    )}
-                    {!summary.notebook_available && (
-                      <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                        {t('studio.libraryNotebookUnavailable')}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      ) : data && !library.isError ? (
-        <div className="rounded-xl border border-dashed p-6 sm:p-8">
-          <FolderOpen className="mb-4 size-6 text-primary" />
-          <h3 className="research-title text-2xl">
+      <div
+        id={browserId}
+        ref={browserRef}
+        role="region"
+        aria-labelledby={`${controlId}-toggle`}
+        hidden={!expanded}
+        className="space-y-4"
+      >
+        <fieldset
+          disabled={disabled}
+          className="grid min-w-0 gap-3 sm:grid-cols-2"
+        >
+          <div className="sm:col-span-2">
+            <label
+              htmlFor={`${controlId}-search`}
+              className="mb-2 block text-xs font-medium text-muted-foreground"
+            >
+              {t('studio.librarySearch')}
+            </label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+              <input
+                id={`${controlId}-search`}
+                type="search"
+                maxLength={200}
+                value={searchInput}
+                onChange={(event) =>
+                  setSearchInput(event.target.value.slice(0, 200))
+                }
+                placeholder={t('studio.librarySearchPlaceholder')}
+                className={`${studioFieldClass} pl-9`}
+              />
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor={`${controlId}-kind`}
+              className="mb-2 block text-xs font-medium text-muted-foreground"
+            >
+              {t('studio.libraryFormat')}
+            </label>
+            <select
+              id={`${controlId}-kind`}
+              value={kind}
+              className={studioFieldClass}
+              onChange={(event) => {
+                setKind(event.target.value as StudioKind | '')
+                setPage(1)
+              }}
+            >
+              <option value="">{t('studio.libraryAllFormats')}</option>
+              {studioFormats.map((format) => (
+                <option key={format.kind} value={format.kind}>
+                  {t(format.label)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor={`${controlId}-sort`}
+              className="mb-2 block text-xs font-medium text-muted-foreground"
+            >
+              {t('studio.librarySort')}
+            </label>
+            <select
+              id={`${controlId}-sort`}
+              value={sort}
+              className={studioFieldClass}
+              onChange={(event) => {
+                setSort(
+                  event.target.value as NonNullable<StudioLibraryQuery['sort']>
+                )
+                setPage(1)
+              }}
+            >
+              <option value="updated">{t('studio.librarySortUpdated')}</option>
+              <option value="created">{t('studio.librarySortCreated')}</option>
+              <option value="title">{t('studio.librarySortTitle')}</option>
+            </select>
+          </div>
+        </fieldset>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant={scope === 'orphaned' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-auto min-h-8 whitespace-normal text-left"
+            disabled={disabled}
+            aria-pressed={scope === 'orphaned'}
+            onClick={changeScope}
+          >
+            <ArchiveRestore className="size-4" />
             {t(
-              hasFilters
-                ? 'studio.libraryNoMatches'
-                : scope === 'orphaned'
-                  ? 'studio.libraryOrphanedEmpty'
-                  : 'studio.libraryEmpty'
+              scope === 'orphaned'
+                ? 'studio.libraryReturnNotebook'
+                : 'studio.libraryRecover'
             )}
-          </h3>
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-            {t(
-              hasFilters
-                ? 'studio.libraryNoMatchesHelp'
-                : scope === 'orphaned'
-                  ? 'studio.libraryOrphanedEmptyHelp'
-                  : 'studio.libraryEmptyHelp'
-            )}
-          </p>
+          </Button>
           {hasFilters && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="mt-4"
               disabled={disabled}
               onClick={clearFilters}
             >
@@ -355,39 +297,138 @@ export function ArtifactLibrary({
             </Button>
           )}
         </div>
-      ) : null}
-      {data && data.filtered_total > 0 && (
-        <nav
-          aria-label={t('studio.libraryPage', { page: currentPage, pages })}
-          className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
-        >
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {t('studio.libraryPage', { page: currentPage, pages })}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || library.isFetching || currentPage <= 1}
-              onClick={() => setPage(Math.max(1, currentPage - 1))}
-            >
-              <ArrowLeft className="size-4" />
-              {t('studio.libraryPrevious')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || library.isFetching || currentPage >= pages}
-              onClick={() => setPage(Math.min(pages, currentPage + 1))}
-            >
-              {t('studio.libraryNext')}
-              <ArrowRight className="size-4" />
-            </Button>
+        {scope === 'orphaned' && (
+          <p className="rounded-lg bg-accent/50 p-3 text-xs leading-relaxed text-muted-foreground">
+            {t('studio.libraryRecoveryHelp')}
+          </p>
+        )}
+        {library.isLoading && !data ? (
+          <StudioSkeleton />
+        ) : data && data.items.length > 0 ? (
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-2 sm:gap-3">
+            {data.items.map((summary) => {
+              const format = studioFormats.find(
+                (item) => item.kind === summary.kind
+              )
+              const Icon = format?.icon ?? FolderOpen
+              const updated = displayDate(summary.updated_at, language)
+              return (
+                <li key={summary.id} className="min-w-0">
+                  <button
+                    type="button"
+                    disabled={disabled || library.isFetching}
+                    aria-pressed={selectedId === summary.id}
+                    onClick={() => onSelect(summary)}
+                    className={`flex h-full w-full min-w-0 items-start gap-3 rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 ${selectedId === summary.id ? 'border-primary bg-accent/50' : 'bg-card hover:bg-muted'}`}
+                  >
+                    <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-sm font-medium leading-relaxed">
+                        {summary.title}
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                        {format ? t(format.label) : summary.kind} ·{' '}
+                        {t('studio.sections', { count: summary.card_count })} ·{' '}
+                        {t(
+                          summary.generation === 'ai'
+                            ? 'studio.aiDraft'
+                            : 'studio.sourceExcerpts'
+                        )}
+                      </span>
+                      {updated && (
+                        <time
+                          dateTime={summary.updated_at}
+                          className="mt-2 block text-xs text-muted-foreground"
+                        >
+                          {t('studio.libraryUpdated', { date: updated })}
+                        </time>
+                      )}
+                      {summary.reference_status === 'snapshot' && (
+                        <span className="mt-2 block text-xs leading-relaxed text-primary">
+                          {t('studio.librarySavedReferences')}
+                        </span>
+                      )}
+                      {!summary.notebook_available && (
+                        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                          {t('studio.libraryNotebookUnavailable')}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ) : data && !library.isError ? (
+          <div className="rounded-xl border border-dashed p-6 sm:p-8">
+            <FolderOpen className="mb-4 size-6 text-primary" />
+            <h3 className="research-title text-2xl">
+              {t(
+                hasFilters
+                  ? 'studio.libraryNoMatches'
+                  : scope === 'orphaned'
+                    ? 'studio.libraryOrphanedEmpty'
+                    : 'studio.libraryEmpty'
+              )}
+            </h3>
+            <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {t(
+                hasFilters
+                  ? 'studio.libraryNoMatchesHelp'
+                  : scope === 'orphaned'
+                    ? 'studio.libraryOrphanedEmptyHelp'
+                    : 'studio.libraryEmptyHelp'
+              )}
+            </p>
+            {hasFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                disabled={disabled}
+                onClick={clearFilters}
+              >
+                {t('studio.libraryResetFilters')}
+              </Button>
+            )}
           </div>
-        </nav>
-      )}
+        ) : null}
+        {data && data.filtered_total > 0 && (
+          <nav
+            aria-label={t('studio.libraryPage', { page: currentPage, pages })}
+            className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+          >
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {t('studio.libraryPage', { page: currentPage, pages })}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || library.isFetching || currentPage <= 1}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+              >
+                <ArrowLeft className="size-4" />
+                {t('studio.libraryPrevious')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={
+                  disabled || library.isFetching || currentPage >= pages
+                }
+                onClick={() => setPage(Math.min(pages, currentPage + 1))}
+              >
+                {t('studio.libraryNext')}
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          </nav>
+        )}
+      </div>
     </section>
   )
 }

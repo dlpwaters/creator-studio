@@ -1,4 +1,6 @@
 export const studioLibrary = {
+  libraryBrowse: 'Browse saved work',
+  libraryHide: 'Hide saved work',
   librarySearch: 'Search saved work',
   librarySearchPlaceholder: 'Search titles and topics',
   libraryFormat: 'Format',
