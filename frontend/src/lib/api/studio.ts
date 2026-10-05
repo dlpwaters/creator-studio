@@ -2,8 +2,12 @@ import { apiClient } from './client'
 import type {
   StudioArtifact,
   StudioCapabilities,
+  StudioCopyRequest,
   StudioExport,
   StudioGenerateRequest,
+  StudioImportRequest,
+  StudioLibraryPage,
+  StudioLibraryQuery,
   StudioReadiness,
   StudioUpdateRequest
 } from '@/lib/types/studio'
@@ -11,6 +15,18 @@ import type {
 const artifactPath = (id: string) =>
   `/studio/artifacts/${encodeURIComponent(id)}`
 export const studioApi = {
+  library: async (notebookId: string, options: StudioLibraryQuery = {}) =>
+    (
+      await apiClient.get<StudioLibraryPage>('/studio/library', {
+        params: { notebook_id: notebookId, ...options }
+      })
+    ).data,
+  import: async (data: StudioImportRequest) =>
+    (await apiClient.post<StudioArtifact>('/studio/artifacts/import', data))
+      .data,
+  copy: async (id: string, data: StudioCopyRequest = {}) =>
+    (await apiClient.post<StudioArtifact>(`${artifactPath(id)}/copy`, data))
+      .data,
   capabilities: async () =>
     (await apiClient.get<StudioCapabilities>('/studio/capabilities')).data,
   readiness: async (id: string) =>
@@ -26,7 +42,8 @@ export const studioApi = {
       })
     ).data,
   get: async (id: string) =>
-    (await apiClient.get<StudioArtifact>(artifactPath(id))).data,
+    (await apiClient.get<StudioArtifact>(artifactPath(id), { timeout: 30_000 }))
+      .data,
   generate: async (data: StudioGenerateRequest) =>
     (await apiClient.post<StudioArtifact>('/studio/artifacts', data)).data,
   update: async (id: string, data: StudioUpdateRequest) =>

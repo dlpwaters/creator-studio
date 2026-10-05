@@ -53,13 +53,14 @@ const capabilities: StudioCapabilities = {
   narration_available: true,
   supported_kinds: ['slides', 'video']
 }
-function setup(data = artifact) {
+function setup(data = artifact, copying = false) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   })
   const onUpdated = vi.fn(),
     onDeleted = vi.fn(),
-    onDirtyChange = vi.fn()
+    onDirtyChange = vi.fn(),
+    onBusyChange = vi.fn()
   const review = (snapshot: StudioArtifact) => (
     <QueryClientProvider client={client}>
       <ArtifactReview
@@ -68,6 +69,8 @@ function setup(data = artifact) {
         onUpdated={onUpdated}
         onDeleted={onDeleted}
         onDirtyChange={onDirtyChange}
+        onBusyChange={onBusyChange}
+        copying={copying}
       />
     </QueryClientProvider>
   )
@@ -78,7 +81,8 @@ function setup(data = artifact) {
       rendered.rerender(review(snapshot)),
     onUpdated,
     onDeleted,
-    onDirtyChange
+    onDirtyChange,
+    onBusyChange
   }
 }
 beforeEach(() => {
@@ -100,6 +104,48 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('ArtifactReview', () => {
+  it('blocks discard during a save and ignores an old save after unmount', async () => {
+    let finish!: (saved: StudioArtifact) => void
+    vi.mocked(studioApi.update).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    const first = setup()
+    fireEvent.click(screen.getByRole('button', { name: 'studio.edit' }))
+    fireEvent.change(screen.getByLabelText('studio.artifactTitle'), {
+      target: { value: 'First edit' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'studio.save' }))
+    await waitFor(() =>
+      expect(first.onBusyChange).toHaveBeenLastCalledWith(true)
+    )
+    act(() => {
+      requestNavigation(vi.fn())
+    })
+    expect(
+      screen.getByRole('button', { name: 'studio.discard' })
+    ).toBeDisabled()
+    first.unmount()
+    writeStudioDraft({ ...artifact, title: 'New recovery after navigation' })
+    await act(async () => {
+      finish({ ...artifact, title: 'First edit' })
+      await Promise.resolve()
+    })
+    expect(first.onUpdated).not.toHaveBeenCalled()
+    expect(readStudioDraft(artifact)?.title).toBe(
+      'New recovery after navigation'
+    )
+    expect(first.onBusyChange).toHaveBeenLastCalledWith(false)
+  })
+  it('locks recovered editing and saving while a copy is pending', () => {
+    writeStudioDraft({ ...artifact, title: 'Recovered edit' })
+    setup(artifact, true)
+    expect(screen.getByRole('button', { name: 'studio.edit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'studio.save' })).toBeDisabled()
+    expect(studioApi.update).not.toHaveBeenCalled()
+  })
   it('recovers unsaved work after remount and clears it only after successful save', async () => {
     const first = setup()
     fireEvent.click(screen.getByRole('button', { name: 'studio.edit' }))

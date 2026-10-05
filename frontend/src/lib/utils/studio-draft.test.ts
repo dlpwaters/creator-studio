@@ -65,7 +65,7 @@ describe('session Studio draft validation', () => {
     expect(readStudioDraft(artifact)).toBeNull()
     expect(sessionStorage.getItem(key)).toBe(raw)
   })
-  it('rejects mismatched notebooks, unknown cards, and foreign citations', () => {
+  it('rejects mismatched notebooks, malformed IDs, and foreign citations', () => {
     writeStudioDraft(artifact)
     const value = JSON.parse(sessionStorage.getItem(key)!)
     sessionStorage.setItem(
@@ -77,7 +77,7 @@ describe('session Studio draft validation', () => {
       key,
       JSON.stringify({
         ...value,
-        cards: [{ ...value.cards[0], id: 'unknown-card' }]
+        cards: [{ ...value.cards[0], id: ' ' }]
       })
     )
     expect(readStudioDraft(artifact)).toBeNull()
@@ -88,6 +88,34 @@ describe('session Studio draft validation', () => {
         cards: [{ ...value.cards[0], source_ids: ['source:other'] }]
       })
     )
+    expect(readStudioDraft(artifact)).toBeNull()
+  })
+  it('recovers new, reordered, and unfinished sections without weakening the save boundary', () => {
+    const newCard = {
+      ...artifact.cards[0],
+      id: 'new-card',
+      title: '',
+      body: '',
+      source_ids: []
+    }
+    writeStudioDraft({
+      ...artifact,
+      cards: [newCard, { ...artifact.cards[0], notes: 'Local notes' }]
+    })
+    const recovered = readStudioDraft(artifact)
+    expect(recovered?.cards.map((card) => card.id)).toEqual([
+      'new-card',
+      'card-one'
+    ])
+    expect(recovered?.cards[0].source_ids).toEqual([])
+    expect(recovered?.cards[1].notes).toBe('Local notes')
+    expect(recovered?.updated_at).toBe(artifact.updated_at)
+  })
+  it('rejects duplicate section IDs even when their fields are otherwise valid', () => {
+    writeStudioDraft({
+      ...artifact,
+      cards: [artifact.cards[0], artifact.cards[0]]
+    })
     expect(readStudioDraft(artifact)).toBeNull()
   })
   it('strips unknown local fields before any restored card can reach a save', () => {

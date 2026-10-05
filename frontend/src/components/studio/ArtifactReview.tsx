@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   readStudioDraft,
   writeStudioDraft,
@@ -11,7 +11,15 @@ import {
   NAVIGATION_REQUEST_EVENT,
   type NavigationRequest
 } from '@/lib/utils/request-navigation'
-import { Download, Pencil, Save, Trash2, Eye, Loader2 } from 'lucide-react'
+import {
+  Download,
+  Pencil,
+  Save,
+  Trash2,
+  Eye,
+  Loader2,
+  Copy
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -45,13 +53,19 @@ export function ArtifactReview({
   capabilities,
   onUpdated,
   onDeleted,
-  onDirtyChange
+  onDirtyChange,
+  onBusyChange,
+  onCopy,
+  copying = false
 }: {
   artifact: StudioArtifact
   capabilities: StudioCapabilities
   onUpdated: (artifact: StudioArtifact) => void
   onDeleted: () => void
   onDirtyChange: (dirty: boolean) => void
+  onBusyChange?: (busy: boolean) => void
+  onCopy?: () => void
+  copying?: boolean
 }) {
   const { t } = useTranslation()
   const router = useRouter()
@@ -72,6 +86,19 @@ export function ArtifactReview({
   const [saved, setSaved] = useState(false)
   const update = useStudioUpdate()
   const remove = useStudioDelete()
+  const ownership = useRef(0)
+  const mutating = update.isPending || remove.isPending || copying
+  const available = artifact.notebook_available !== false
+  useEffect(
+    () => () => {
+      ownership.current++
+    },
+    []
+  )
+  useEffect(() => {
+    onBusyChange?.(update.isPending || remove.isPending)
+    return () => onBusyChange?.(false)
+  }, [update.isPending, remove.isPending, onBusyChange])
   useEffect(() => {
     if (recovered) onDirtyChange(true)
   }, [recovered, onDirtyChange])
@@ -149,13 +176,15 @@ export function ArtifactReview({
 
   const valid = studioArtifactValid(draft)
   function change(next: StudioArtifact) {
+    if (mutating) return
     setDraft(next)
     setDirty(true)
     onDirtyChange(true)
     setSaved(false)
   }
   async function save() {
-    if (!valid) return
+    if (!valid || !available || mutating) return
+    const owner = ownership.current
     try {
       const result = await update.mutateAsync({
         id: artifact.id,
@@ -169,6 +198,7 @@ export function ArtifactReview({
           expected_updated_at: draft.updated_at
         }
       })
+      if (owner !== ownership.current) return
       clearStudioDraft(artifact.id)
       setRecovered(false)
       setDraft(result)
@@ -181,7 +211,8 @@ export function ArtifactReview({
     }
   }
   async function download() {
-    if (exporting || dirty) return
+    if (exporting || dirty || mutating) return
+    const owner = ownership.current
     setExporting(true)
     setExportError(null)
     try {
@@ -191,6 +222,7 @@ export function ArtifactReview({
         extension as StudioExport,
         narration === 'local' ? 'local' : undefined
       )
+      if (owner !== ownership.current) return
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -200,19 +232,21 @@ export function ArtifactReview({
       link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (error) {
+      if (owner !== ownership.current) return
       const data = (error as { response?: { data?: unknown } }).response?.data
       if (data instanceof Blob) {
         try {
           const parsed = JSON.parse(await data.text())
+          if (owner !== ownership.current) return
           setExportError(
             typeof parsed.detail === 'string' ? parsed.detail : error
           )
         } catch {
-          setExportError(error)
+          if (owner === ownership.current) setExportError(error)
         }
       } else setExportError(error)
     } finally {
-      setExporting(false)
+      if (owner === ownership.current) setExporting(false)
     }
   }
   return (
@@ -232,7 +266,7 @@ export function ArtifactReview({
             )}
           </span>
           <span>·</span>
-          <span>{t('studio.sections', { count: artifact.cards.length })}</span>
+          <span>{t('studio.sections', { count: draft.cards.length })}</span>
         </div>
         <h2 className="research-title break-words text-3xl sm:text-4xl">
           {draft.title}
@@ -242,6 +276,16 @@ export function ArtifactReview({
         </p>
       </header>
       <StudioWarnings warnings={artifact.warnings} />
+      {!available && (
+        <p role="status" className="rounded-lg border bg-muted/40 p-3 text-sm">
+          {t('studio.orphanNotice')}
+        </p>
+      )}
+      {available && artifact.reference_status === 'snapshot' && (
+        <p className="max-w-prose text-sm text-muted-foreground">
+          {t('studio.snapshotNotice')}
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div className="flex gap-1">
           <Button
@@ -257,6 +301,7 @@ export function ArtifactReview({
             size="sm"
             variant={editing ? 'secondary' : 'ghost'}
             aria-pressed={editing}
+            disabled={!available || mutating}
             onClick={() => setEditing(true)}
           >
             <Pencil className="size-4" />
@@ -269,14 +314,35 @@ export function ArtifactReview({
               {t('studio.unsaved')}
             </span>
           )}
-          {dirty && (
+          {dirty && available && (
             <Button
               size="sm"
-              disabled={!valid || update.isPending}
+              disabled={!valid || mutating}
               onClick={() => void save()}
             >
               <Save className="size-4" />
               {t(update.isPending ? 'studio.saving' : 'studio.save')}
+            </Button>
+          )}
+          {onCopy && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={dirty || update.isPending || exporting || copying}
+              onClick={onCopy}
+            >
+              {copying ? (
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              {t(
+                copying
+                  ? 'studio.copying'
+                  : available
+                    ? 'studio.makeCopy'
+                    : 'studio.restoreHere'
+              )}
             </Button>
           )}
           <Button
@@ -284,7 +350,7 @@ export function ArtifactReview({
             size="icon"
             aria-label={t('studio.delete')}
             onClick={() => setDeleteOpen(true)}
-            disabled={update.isPending || exporting}
+            disabled={update.isPending || exporting || copying}
           >
             <Trash2 className="size-4 text-muted-foreground" />
           </Button>
@@ -306,11 +372,11 @@ export function ArtifactReview({
       {update.isError && (
         <StudioError error={update.error} title={t('studio.requestFailed')} />
       )}
-      {editing ? (
+      {editing && available ? (
         <ArtifactEditor
           artifact={draft}
           onChange={change}
-          disabled={update.isPending}
+          disabled={mutating}
         />
       ) : (
         <ArtifactPreview
@@ -402,6 +468,7 @@ export function ArtifactReview({
           <AlertDialogFooter>
             <AlertDialogCancel>{t('studio.continueEditing')}</AlertDialogCancel>
             <AlertDialogAction
+              disabled={mutating}
               onClick={() => {
                 const navigate = pendingNavigation
                 clearStudioDraft(artifact.id)
@@ -437,8 +504,10 @@ export function ArtifactReview({
               variant="destructive"
               disabled={remove.isPending}
               onClick={async () => {
+                const owner = ownership.current
                 try {
                   await remove.mutateAsync(artifact.id)
+                  if (owner !== ownership.current) return
                   clearStudioDraft(artifact.id)
                   setRecovered(false)
                   setDeleteOpen(false)

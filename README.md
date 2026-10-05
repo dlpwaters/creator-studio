@@ -235,7 +235,9 @@ Thanks to the [Esperanto](https://github.com/lfnovo/esperanto) library, we suppo
 - **🎬 Creation Studio**: Turn selected notebook sources into editable slide decks,
   captioned explainer videos, briefs, quizzes, flashcards, concept groups, and timelines.
   Start with local source excerpts or explicitly request an AI draft. Review, edit,
-  save, and export without leaving your research workspace.
+  save, and export without leaving your research workspace. Search saved work,
+  edit section order and evidence, copy drafts, import JSON exports, and recover
+  retained artifacts from deleted notebooks.
 
 See [Creation Studio](docs/CREATION_STUDIO.md) for formats, source controls,
 local narration, and deployment instructions.

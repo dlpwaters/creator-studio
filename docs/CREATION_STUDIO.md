@@ -14,6 +14,13 @@ sources so you can resolve them before creating a draft.
 4. Open the saved draft. Check claims and references, then edit its title and sections.
 5. Save your edits and choose an export format.
 
+The section editor supports **Add section**, **Duplicate section**, **Move earlier**,
+**Move later**, and confirmed removal. New sections require a title, substantive
+content, and at least one selected source or note before saving. Choose evidence
+for each section with its checkboxes. Unsaved recovery includes new sections and
+their order, even while a new section is unfinished. Save and copy operations lock
+conflicting controls until they finish.
+
 Advanced settings expose audience, language, visual style, and section count.
 Source excerpts preserve the input language and do not translate or infer facts.
 Short input can produce fewer sections than requested. A concept-group excerpt
@@ -37,6 +44,31 @@ browser Back. Recovery retains the original save timestamp, so it cannot silentl
 overwrite a newer version. Save before sharing or closing the browser session;
 drafts are not published automatically. Restricted or full browser storage can
 prevent recovery, without interrupting editing.
+
+## Find, copy, import, and recover drafts
+
+The saved-work library searches titles and audience text, filters by format, and
+sorts by updated date, creation date, or title. It shows 12 summaries per page and
+loads full content when you open a draft. **Refresh** updates the library without
+replacing your unsaved edits. **Make a copy** creates a separate draft; the original
+keeps its content and timestamps. Save or discard your edits before copying.
+
+Export **JSON** to move a draft between installations. In the destination notebook,
+choose **Import JSON**, select the file, review its title, format, section count,
+and destination, then confirm **Import draft**. Import creates a fresh identity and
+timestamps and makes no model call. The complete request, including metadata,
+must be smaller than 1 MB. Import validates version 1 data, section content,
+reference metadata, and limits before writing.
+
+Cross-notebook transfers keep source snapshots and show a review notice. Matching
+source IDs alone do not establish links between notebooks. Existing snapshots
+remain snapshots; import does not verify claims or recreate missing sources.
+
+**Recover from deleted notebooks** shows retained artifacts whose original
+notebook is unavailable. You can preview, export, or delete them. Select an existing
+notebook and choose **Restore a copy here** to make an editable copy there.
+Recovery preserves evidence snapshots and leaves the retained original unchanged.
+This uses the installation's existing access boundary and does not isolate users.
 
 ## Export formats
 
@@ -86,6 +118,12 @@ No database migration is required. Generation requests allow 3–20 sections; sa
 artifacts can contain 1–20. Each scene lasts 5–60 seconds. Persistence is bounded to
 1 MB per artifact and 1,000 artifacts per installation. Two expensive exports can run
 concurrently in each API process; additional requests wait for a rendering slot.
+
+The library API returns paginated summaries without section bodies or source text.
+Its bounded scan reads one artifact at a time; it is not a persistent search index.
+Corrupt files are omitted from the library. Back up the Studio directory with your
+notebooks. Deleting a notebook retains its Studio artifacts until you explicitly
+delete them, so they still count toward the installation limit.
 
 For a source build, run `uv sync --frozen`, install frontend dependencies, and use the
 normal Dockerfile. Pillow, python-pptx, ffmpeg, fonts, and espeak-ng support exports.

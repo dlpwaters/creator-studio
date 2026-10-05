@@ -1,16 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { clearStudioDraft } from '@/lib/utils/studio-draft'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  ArrowUpRight,
-  BookOpen,
-  FolderOpen,
-  Plus,
-  RefreshCw
-} from 'lucide-react'
+import { ArrowUpRight, BookOpen, FolderOpen, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -22,12 +16,15 @@ import {
   AlertDialogAction
 } from '@/components/ui/alert-dialog'
 import { useNotebooks } from '@/lib/hooks/use-notebooks'
-import { useStudioArtifacts, useStudioCapabilities } from '@/lib/hooks/studio'
+import { useStudioCopy, useStudioCapabilities } from '@/lib/hooks/studio'
+import { studioApi } from '@/lib/api/studio'
 import { useTranslation } from '@/lib/hooks/use-translation'
-import type { StudioArtifact } from '@/lib/types/studio'
+import type { StudioArtifact, StudioArtifactSummary } from '@/lib/types/studio'
 import { StudioCreateForm } from './StudioCreateForm'
 import { studioFormats } from './studio-options'
 import { ArtifactReview } from './ArtifactReview'
+import { ArtifactLibrary } from './ArtifactLibrary'
+import { StudioImportPanel } from './StudioImportPanel'
 import {
   StudioError,
   StudioSkeleton,
@@ -45,11 +42,26 @@ export function StudioWorkspace() {
   const [dirty, setDirty] = useState(false)
   const [reviewVersion, setReviewVersion] = useState(0)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [transferBusy, setTransferBusy] = useState(false)
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [opening, setOpening] = useState(false)
+  const [openError, setOpenError] = useState<unknown>(null)
+  const openVersion = useRef(0)
+  useEffect(
+    () => () => {
+      openVersion.current++
+    },
+    []
+  )
   const notebooks = useNotebooks()
   const capabilities = useStudioCapabilities()
-  const artifacts = useStudioArtifacts(notebookId)
+  const copy = useStudioCopy()
+  const working =
+    busy || opening || copy.isPending || transferBusy || reviewBusy
   const notebook = notebooks.data?.find((item) => item.id === notebookId)
   function guard(action: () => void) {
+    if (working) return
     if (dirty) setPendingAction(() => action)
     else action()
   }
@@ -59,6 +71,9 @@ export function StudioWorkspace() {
       setSelected(null)
       setDirty(false)
       setMobileView('create')
+      setImporting(false)
+      setOpenError(null)
+      openVersion.current++
       router.replace(
         id ? `/studio?notebook=${encodeURIComponent(id)}` : '/studio',
         { scroll: false }
@@ -69,6 +84,39 @@ export function StudioWorkspace() {
     setSelected(artifact)
     setDirty(false)
     setMobileView('library')
+    setImporting(false)
+    setOpenError(null)
+  }
+  function openArtifact(summary: StudioArtifactSummary) {
+    guard(() => {
+      const version = ++openVersion.current
+      setOpening(true)
+      setOpenError(null)
+      void studioApi
+        .get(summary.id)
+        .then((artifact) => {
+          if (version === openVersion.current) created(artifact)
+        })
+        .catch((error) => {
+          if (version === openVersion.current) setOpenError(error)
+        })
+        .finally(() => {
+          if (version === openVersion.current) setOpening(false)
+        })
+    })
+  }
+  async function copySelected() {
+    if (!selected || dirty || working) return
+    try {
+      created(
+        await copy.mutateAsync({
+          id: selected.id,
+          data: { notebook_id: notebookId }
+        })
+      )
+    } catch {
+      /* Keep the original open and show the transfer error. */
+    }
   }
   return (
     <div className="flex-1 overflow-y-auto">
@@ -97,7 +145,7 @@ export function StudioWorkspace() {
                 id="studio-notebook"
                 className={studioFieldClass}
                 value={notebookId}
-                disabled={busy || notebooks.isLoading}
+                disabled={working || notebooks.isLoading}
                 onChange={(e) => chooseNotebook(e.target.value)}
               >
                 <option value="">{t('studio.chooseNotebook')}</option>
@@ -116,7 +164,7 @@ export function StudioWorkspace() {
                 variant="outline"
                 size="icon"
                 aria-label={t('studio.backToNotebook')}
-                disabled={busy}
+                disabled={working}
                 onClick={() =>
                   guard(() =>
                     router.push(`/notebooks/${encodeURIComponent(notebookId)}`)
@@ -195,7 +243,6 @@ export function StudioWorkspace() {
                 onClick={() => setMobileView('library')}
               >
                 {t('studio.library')}
-                {artifacts.data?.length ? ` (${artifacts.data.length})` : ''}
               </Button>
             </div>
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(20rem,25rem)_minmax(0,1fr)] xl:gap-8">
@@ -209,131 +256,95 @@ export function StudioWorkspace() {
                   capabilities={capabilities.data}
                   onCreated={created}
                   onBusy={setBusy}
-                  blocked={dirty}
+                  blocked={
+                    dirty ||
+                    opening ||
+                    copy.isPending ||
+                    importing ||
+                    reviewBusy
+                  }
                 />
               </aside>
               <section
                 aria-label={t('studio.library')}
-                inert={busy}
+                inert={busy || opening}
                 className={`min-w-0 space-y-6 ${mobileView === 'library' ? 'block' : 'hidden'} lg:block`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-medium">
-                    {t('studio.library')}
-                    <span className="ml-2 text-xs tabular-nums text-muted-foreground">
-                      {artifacts.data?.length ?? 0}
-                    </span>
-                  </h2>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() =>
-                        guard(() => {
-                          setSelected(null)
-                          setDirty(false)
-                          setMobileView('create')
-                        })
-                      }
-                    >
-                      <Plus className="size-4" />
-                      {t('studio.create')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('studio.refresh')}
-                      disabled={artifacts.isFetching || busy}
-                      onClick={() => void artifacts.refetch()}
-                    >
-                      <RefreshCw className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {artifacts.isLoading ? (
-                  <StudioSkeleton />
-                ) : artifacts.isError ? (
-                  <StudioError
-                    error={artifacts.error}
-                    title={t('studio.libraryLoadError')}
-                    retry={() => void artifacts.refetch()}
+                <ArtifactLibrary
+                  key={notebookId}
+                  notebookId={notebookId}
+                  selectedId={selected?.id}
+                  disabled={working}
+                  onSelect={openArtifact}
+                  onImport={() =>
+                    guard(() => {
+                      setImporting(true)
+                      setMobileView('library')
+                    })
+                  }
+                  onCreate={() =>
+                    guard(() => {
+                      setSelected(null)
+                      setDirty(false)
+                      setImporting(false)
+                      setMobileView('create')
+                    })
+                  }
+                />
+                {importing && (
+                  <StudioImportPanel
+                    key={notebookId}
+                    notebookId={notebookId}
+                    notebookName={notebook?.name ?? notebookId}
+                    onImported={created}
+                    onCancel={() => setImporting(false)}
+                    onBusyChange={setTransferBusy}
                   />
-                ) : artifacts.data && artifacts.data.length > 0 ? (
-                  <nav
-                    aria-label={t('studio.library')}
-                    className="flex max-h-60 flex-wrap gap-2 overflow-y-auto pb-1"
+                )}
+                {opening && (
+                  <p
+                    role="status"
+                    className="flex items-center gap-2 text-sm text-muted-foreground"
                   >
-                    {artifacts.data.map((artifact) => {
-                      const Icon =
-                        studioFormats.find(
-                          (format) => format.kind === artifact.kind
-                        )?.icon ?? FolderOpen
-                      return (
-                        <button
-                          key={artifact.id}
-                          type="button"
-                          disabled={busy}
-                          aria-pressed={selected?.id === artifact.id}
-                          onClick={() =>
-                            guard(() => {
-                              setSelected(artifact)
-                              setDirty(false)
-                              setMobileView('library')
-                            })
-                          }
-                          className={`flex max-w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 ${selected?.id === artifact.id ? 'border-primary bg-accent/50' : 'bg-card hover:bg-muted'}`}
-                        >
-                          <Icon className="size-4 shrink-0 text-primary" />
-                          <span className="min-w-0">
-                            <span className="block max-w-64 truncate text-sm font-medium">
-                              {artifact.title}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-muted-foreground">
-                              {t(
-                                studioFormats.find(
-                                  (item) => item.kind === artifact.kind
-                                )!.label
-                              )}{' '}
-                              ·{' '}
-                              {t('studio.sections', {
-                                count: artifact.cards.length
-                              })}
-                            </span>
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </nav>
-                ) : null}
-                {selected ? (
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                    {t('studio.opening')}
+                  </p>
+                )}
+                {openError != null && (
+                  <StudioError
+                    error={openError}
+                    title={t('studio.transferFailed')}
+                  />
+                )}
+                {copy.isError && (
+                  <StudioError
+                    error={copy.error}
+                    title={t('studio.transferFailed')}
+                  />
+                )}
+                {selected && !importing ? (
                   <ArtifactReview
                     key={`${selected.id}-${reviewVersion}`}
                     artifact={selected}
                     capabilities={capabilities.data}
                     onUpdated={setSelected}
+                    onCopy={() => void copySelected()}
+                    copying={copy.isPending}
                     onDeleted={() => {
                       setSelected(null)
                       setDirty(false)
                     }}
                     onDirtyChange={setDirty}
+                    onBusyChange={setReviewBusy}
                   />
-                ) : (
+                ) : importing ? null : (
                   <div className="flex min-h-96 flex-col items-start justify-center rounded-xl border border-dashed p-8 sm:p-12">
                     <FolderOpen className="mb-5 size-8 text-primary" />
                     <h3 className="research-title text-3xl">
-                      {t(
-                        artifacts.data?.length
-                          ? 'studio.selectArtifact'
-                          : 'studio.emptyLibrary'
-                      )}
+                      {t('studio.selectArtifact')}
                     </h3>
                     <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                      {t(
-                        artifacts.data?.length
-                          ? 'studio.selectArtifactHelp'
-                          : 'studio.emptyLibraryHelp'
-                      )}
+                      {t('studio.selectArtifactHelp')}
                     </p>
                     <div className="mt-8 flex flex-wrap gap-2">
                       {studioFormats.slice(0, 3).map(({ kind, icon: Icon }) => (
@@ -371,6 +382,7 @@ export function StudioWorkspace() {
                 {t('studio.continueEditing')}
               </AlertDialogCancel>
               <AlertDialogAction
+                disabled={working}
                 onClick={() => {
                   const action = pendingAction
                   if (selected) clearStudioDraft(selected.id)

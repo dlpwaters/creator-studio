@@ -2,8 +2,10 @@ import type { StudioArtifact, StudioCard } from './studio'
 
 export function studioCardError(
   card: StudioCard,
-  kind: StudioArtifact['kind']
+  kind: StudioArtifact['kind'],
+  citationIds?: readonly string[]
 ): string | undefined {
+  if (!card.id.trim() || card.id.length > 200) return 'studio.sectionIdRequired'
   if (!card.title.trim() || card.title.length > 300)
     return 'studio.titleRequired'
   if (
@@ -40,6 +42,25 @@ export function studioCardError(
       card.correct_option >= card.options.length)
   )
     return 'studio.choiceRequired'
+  if (
+    !card.body.trim() &&
+    !card.notes.trim() &&
+    !bullets.length &&
+    !card.question?.trim() &&
+    !card.answer?.trim()
+  )
+    return 'studio.sectionContentRequired'
+  if (
+    !card.source_ids.length ||
+    card.source_ids.length > 150 ||
+    card.source_ids.some(
+      (id) =>
+        !id.trim() ||
+        id.length > 200 ||
+        (citationIds && !citationIds.includes(id))
+    )
+  )
+    return 'studio.sectionCitationRequired'
   return undefined
 }
 export function studioArtifactValid(artifact: StudioArtifact): boolean {
@@ -48,6 +69,14 @@ export function studioArtifactValid(artifact: StudioArtifact): boolean {
     artifact.title.length <= 300 &&
     artifact.cards.length > 0 &&
     artifact.cards.length <= 20 &&
-    artifact.cards.every((card) => !studioCardError(card, artifact.kind))
+    new Set(artifact.cards.map((card) => card.id.trim())).size ===
+      artifact.cards.length &&
+    artifact.cards.every(
+      (card) =>
+        !studioCardError(card, artifact.kind, [
+          ...artifact.source_ids,
+          ...artifact.note_ids
+        ])
+    )
   )
 }

@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from api import studio_service as service
 from api.routers.studio import router
 from api.studio_models import StudioArtifactPatch, StudioGenerateRequest
+from open_notebook.exceptions import NotFoundError
 
 
 @pytest.fixture
@@ -472,3 +473,424 @@ def test_symlinks_and_oversized_files_are_rejected(studio):
     assert (
         studio.client.get(f"/api/studio/artifacts/{artifact['id']}").status_code == 500
     )
+
+
+def import_json(studio, artifact, **changes):
+    return studio.client.post(
+        "/api/studio/artifacts/import",
+        json={"notebook_id": "notebook:one", "artifact": artifact, **changes},
+    )
+
+
+def test_import_assigns_fresh_identity_preserves_evidence_and_never_calls_ai(studio):
+    original = create(studio)
+    original_file = (studio.directory / f"{original['id']}.json").read_bytes()
+    exported = json.loads(original_file)
+    exported.pop("reference_status")
+    exported.pop("notebook_available")
+    response = import_json(studio, exported)
+    assert response.status_code == 201, response.text
+    restored = response.json()
+    assert restored["id"] != original["id"]
+    assert restored["created_at"] != original["created_at"]
+    assert restored["cards"] == original["cards"]
+    assert restored["sources"] == original["sources"]
+    assert restored["reference_status"] == "notebook"
+    assert restored["notebook_available"] is True
+    assert any("Imported artifact" in warning for warning in restored["warnings"])
+    assert (studio.directory / f"{original['id']}.json").read_bytes() == original_file
+    studio.provision.assert_not_called()
+
+
+@pytest.mark.parametrize("length", [2000, 2001])
+def test_import_warning_bounds_match_export(studio, length):
+    from api.studio_exports import export_artifact
+    from api.studio_models import StudioArtifact
+
+    original = create(studio)
+    before = set(studio.directory.iterdir())
+    original["warnings"] = ["x" * length]
+    response = import_json(studio, original)
+    if length > 2000:
+        assert response.status_code == 400
+        assert set(studio.directory.iterdir()) == before
+    else:
+        assert response.status_code == 201, response.text
+        result = export_artifact(StudioArtifact.model_validate(response.json()), "json")
+        assert json.loads(result.data)["warnings"][0] == "x" * length
+    studio.provision.assert_not_called()
+
+
+@pytest.mark.parametrize("version", [0, 2, True, "1"])
+def test_import_rejects_unsupported_versions_without_writes(studio, version):
+    original = create(studio)
+    before = set(studio.directory.iterdir())
+    response = import_json(studio, original, format_version=version)
+    assert response.status_code == 400
+    assert set(studio.directory.iterdir()) == before
+    assert "version 1" in response.json()["detail"]
+    studio.provision.assert_not_called()
+
+
+def test_import_malformed_and_oversized_body_does_not_create_storage(studio):
+    for data in (b'{"artifact": "synthetic-private-payload"', b"{}"):
+        response = studio.client.post(
+            "/api/studio/artifacts/import",
+            content=data,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 400
+        assert "synthetic-private-payload" not in response.text
+    response = studio.client.post(
+        "/api/studio/artifacts/import",
+        content=b"x" * service.MAX_IMPORT_BYTES,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert not studio.directory.exists()
+    studio.provision.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "duplicate_reference",
+        "duplicate_snapshot",
+        "missing_snapshot",
+        "extra_snapshot",
+        "foreign_card_citation",
+    ],
+)
+def test_import_requires_complete_unique_reference_snapshots(studio, invalid):
+    original = create(studio)
+    before = set(studio.directory.iterdir())
+    artifact = json.loads(json.dumps(original))
+    if invalid == "duplicate_reference":
+        artifact["source_ids"].append(artifact["source_ids"][0])
+    elif invalid == "duplicate_snapshot":
+        artifact["sources"].append(artifact["sources"][0])
+    elif invalid == "missing_snapshot":
+        artifact["sources"].pop()
+    elif invalid == "extra_snapshot":
+        artifact["sources"].append({"id": "source:extra", "title": "Synthetic extra"})
+    else:
+        artifact["cards"][0]["source_ids"] = ["source:foreign"]
+    response = import_json(studio, artifact)
+    assert response.status_code == 400
+    assert set(studio.directory.iterdir()) == before
+    studio.provision.assert_not_called()
+
+
+def test_import_missing_or_historically_detached_references_remain_snapshots(studio):
+    original = create(studio)
+    studio.notebook.get_sources.return_value = []
+    missing = import_json(studio, original).json()
+    assert missing["reference_status"] == "snapshot"
+    assert missing["sources"] == original["sources"]
+    assert any(
+        "No source mapping was inferred" in warning for warning in missing["warnings"]
+    )
+    studio.notebook.get_sources.return_value = [studio.source]
+    original["reference_status"] = "snapshot"
+    historical = import_json(studio, original).json()
+    assert historical["reference_status"] == "snapshot"
+    studio.provision.assert_not_called()
+
+
+def test_copy_has_fresh_id_and_timestamp_and_keeps_original_unchanged(studio):
+    original = create(studio)
+    original_file = (studio.directory / f"{original['id']}.json").read_bytes()
+    response = studio.client.post(
+        f"/api/studio/artifacts/{original['id']}/copy", json={}
+    )
+    assert response.status_code == 201
+    copy = response.json()
+    assert copy["id"] != original["id"]
+    assert copy["updated_at"] != original["updated_at"]
+    assert copy["title"] == original["title"] + " (copy)"
+    assert copy["cards"] == original["cards"]
+    assert copy["reference_status"] == "notebook"
+    assert (studio.directory / f"{original['id']}.json").read_bytes() == original_file
+    studio.provision.assert_not_called()
+
+
+def test_copy_to_another_notebook_detaches_missing_membership_and_bounds_title(
+    studio, monkeypatch
+):
+    original = create(studio, topic="x" * 300)
+    destination = SimpleNamespace(
+        id="notebook:two",
+        get_sources=AsyncMock(return_value=[]),
+        get_notes=AsyncMock(return_value=[]),
+    )
+
+    async def notebooks(notebook_id):
+        return studio.notebook if notebook_id == "notebook:one" else destination
+
+    monkeypatch.setattr(service.Notebook, "get", AsyncMock(side_effect=notebooks))
+    response = studio.client.post(
+        f"/api/studio/artifacts/{original['id']}/copy",
+        json={"notebook_id": "notebook:two"},
+    )
+    assert response.status_code == 201
+    copy = response.json()
+    assert copy["notebook_id"] == "notebook:two"
+    assert copy["reference_status"] == "snapshot"
+    assert len(copy["title"]) == 300
+    assert copy["title"].endswith(" (copy)")
+    destination.get_sources.assert_awaited_with(include_full_text=False)
+    studio.provision.assert_not_called()
+
+
+def test_cross_notebook_copy_remains_snapshot_even_when_sources_are_shared(studio):
+    original = create(studio)
+    response = studio.client.post(
+        f"/api/studio/artifacts/{original['id']}/copy",
+        json={"notebook_id": "notebook:two"},
+    )
+    assert response.status_code == 201
+    assert response.json()["reference_status"] == "snapshot"
+    assert response.json()["source_ids"] == original["source_ids"]
+    assert response.json()["notebook_available"] is True
+    studio.provision.assert_not_called()
+
+
+def test_import_and_copy_require_an_existing_destination(studio, monkeypatch):
+    original = create(studio)
+    before = set(studio.directory.iterdir())
+    monkeypatch.setattr(
+        service.Notebook,
+        "get",
+        AsyncMock(side_effect=NotFoundError("Notebook is unavailable")),
+    )
+    assert import_json(studio, original).status_code == 404
+    assert (
+        studio.client.post(
+            f"/api/studio/artifacts/{original['id']}/copy", json={}
+        ).status_code
+        == 404
+    )
+    assert set(studio.directory.iterdir()) == before
+
+
+def test_orphan_get_recovery_copy_patch_and_delete(studio, monkeypatch):
+    original = create(studio)
+    original_file = (studio.directory / f"{original['id']}.json").read_bytes()
+    destination = SimpleNamespace(
+        id="notebook:two",
+        get_sources=AsyncMock(return_value=[]),
+        get_notes=AsyncMock(return_value=[]),
+    )
+
+    async def notebooks(notebook_id):
+        if notebook_id == "notebook:one":
+            raise NotFoundError("Notebook is unavailable")
+        return destination
+
+    monkeypatch.setattr(service.Notebook, "get", AsyncMock(side_effect=notebooks))
+    monkeypatch.setattr(
+        service.Notebook, "get_all", AsyncMock(return_value=[destination])
+    )
+    url = f"/api/studio/artifacts/{original['id']}"
+    orphan = studio.client.get(url)
+    assert orphan.status_code == 200
+    assert orphan.json()["notebook_available"] is False
+    assert orphan.json()["reference_status"] == "snapshot"
+    assert (studio.directory / f"{original['id']}.json").read_bytes() == original_file
+    assert (
+        studio.client.patch(url, json={"title": "Blocked orphan edit"}).status_code
+        == 409
+    )
+    recovery = studio.client.get(
+        "/api/studio/library",
+        params={"scope": "orphaned", "notebook_id": "notebook:two"},
+    ).json()
+    assert recovery["items"][0]["id"] == original["id"]
+    assert recovery["items"][0]["notebook_available"] is False
+    restored = studio.client.post(
+        url + "/copy", json={"notebook_id": "notebook:two", "title": "Recovered draft"}
+    )
+    assert restored.status_code == 201
+    assert restored.json()["notebook_available"] is True
+    assert restored.json()["reference_status"] == "snapshot"
+    assert service.ORPHAN_WARNING not in restored.json()["warnings"]
+    assert (
+        studio.client.patch(
+            f"/api/studio/artifacts/{restored.json()['id']}",
+            json={"title": "Reviewed recovery"},
+        ).status_code
+        == 200
+    )
+    assert studio.client.delete(url).status_code == 204
+    assert not (studio.directory / f"{original['id']}.json").exists()
+
+
+def test_database_failures_do_not_misclassify_artifacts_as_orphans(studio, monkeypatch):
+    original = create(studio)
+    monkeypatch.setattr(
+        service.Notebook,
+        "get",
+        AsyncMock(side_effect=RuntimeError("synthetic-private-database-error")),
+    )
+    url = f"/api/studio/artifacts/{original['id']}"
+    for response in (
+        studio.client.get(url),
+        studio.client.delete(url),
+        studio.client.patch(url, json={"title": "Keep original"}),
+    ):
+        assert response.status_code == 500
+        assert "synthetic-private" not in response.text
+    assert (studio.directory / f"{original['id']}.json").exists()
+
+
+def test_library_summaries_filter_scope_search_sort_and_clamp_page(studio, monkeypatch):
+    from api.studio_models import StudioArtifact
+
+    original = create(studio)
+    (studio.directory / f"{original['id']}.json").unlink()
+    variants = [
+        ("Bravo", "slides", "notebook:one", "Readers"),
+        ("Alpha", "quiz", "notebook:one", "Experts"),
+        ("Charlie", "slides", "notebook:two", "Readers"),
+        ("Deleted project", "brief", "notebook:gone", "Readers"),
+    ]
+    for index, (title, kind, notebook_id, audience) in enumerate(variants, 1):
+        payload = {
+            **original,
+            "id": f"{index:032x}",
+            "title": title,
+            "kind": kind,
+            "notebook_id": notebook_id,
+            "audience": audience,
+            "created_at": f"2026-01-0{index}T00:00:00+00:00",
+            "updated_at": "2026-02-01T00:00:00+00:00",
+        }
+        if kind == "quiz":
+            payload["cards"] = [
+                {**card, "question": "Synthetic question", "answer": "Synthetic answer"}
+                for card in original["cards"]
+            ]
+        service._create(StudioArtifact.model_validate(payload))
+    (studio.directory / ("f" * 32 + ".json")).write_text("corrupt")
+    monkeypatch.setattr(
+        service.Notebook,
+        "get_all",
+        AsyncMock(return_value=[studio.notebook, SimpleNamespace(id="notebook:two")]),
+    )
+    scoped = studio.client.get(
+        "/api/studio/library",
+        params={"notebook_id": "notebook:one", "sort": "title", "page_size": 1},
+    ).json()
+    assert scoped["total"] == 2 and scoped["filtered_total"] == 2
+    assert scoped["items"][0]["title"] == "Alpha"
+    assert scoped["pages"] == 2
+    assert all(
+        key not in scoped["items"][0]
+        for key in ("cards", "sources", "source_ids", "note_ids", "warnings")
+    )
+    searched = studio.client.get(
+        "/api/studio/library", params={"query": "eXpErTs"}
+    ).json()
+    assert searched["total"] == 3 and searched["filtered_total"] == 1
+    assert searched["items"][0]["title"] == "Alpha"
+    filtered = studio.client.get(
+        "/api/studio/library", params={"kind": "slides", "sort": "created"}
+    ).json()
+    assert [item["title"] for item in filtered["items"]] == ["Charlie", "Bravo"]
+    tied = studio.client.get("/api/studio/library", params={"sort": "updated"}).json()
+    assert [item["id"] for item in tied["items"]] == [
+        f"{index:032x}" for index in (1, 2, 3)
+    ]
+    clamped = studio.client.get(
+        "/api/studio/library", params={"page": 999, "page_size": 2}
+    ).json()
+    assert clamped["page"] == 2 and len(clamped["items"]) == 1
+    orphaned = studio.client.get(
+        "/api/studio/library", params={"scope": "orphaned"}
+    ).json()
+    assert orphaned["total"] == 1
+    assert orphaned["items"][0]["title"] == "Deleted project"
+    assert orphaned["items"][0]["reference_status"] == "snapshot"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"page": 0},
+        {"page_size": 0},
+        {"page_size": 51},
+        {"query": "x" * 201},
+        {"kind": "unsupported"},
+        {"scope": "unsupported"},
+        {"sort": "unsupported"},
+    ],
+)
+def test_library_request_bounds(studio, params):
+    assert studio.client.get("/api/studio/library", params=params).status_code == 422
+    assert not studio.directory.exists()
+
+
+def test_empty_library_has_stable_page_one_and_no_writes(studio):
+    response = studio.client.get("/api/studio/library", params={"page": 999})
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [],
+        "total": 0,
+        "filtered_total": 0,
+        "page": 1,
+        "page_size": 12,
+        "pages": 1,
+    }
+    assert not studio.directory.exists()
+
+
+def test_import_reads_membership_only_and_accepts_exported_json(studio):
+    from api.studio_exports import export_artifact
+    from api.studio_models import StudioArtifact
+
+    original = create(studio)
+    exported = export_artifact(StudioArtifact.model_validate(original), "json")
+    response = import_json(studio, json.loads(exported.data))
+    assert response.status_code == 201, response.text
+    restored = response.json()
+    assert restored["source_ids"] == original["source_ids"]
+    assert restored["note_ids"] == original["note_ids"]
+    assert restored["sources"] == original["sources"]
+    assert [card["body"] for card in restored["cards"]] == [
+        card["body"] for card in original["cards"]
+    ]
+    studio.notebook.get_sources.assert_awaited_with(include_full_text=False)
+    studio.notebook.get_notes.assert_awaited_with(include_content=False)
+    studio.provision.assert_not_called()
+
+
+def test_import_stream_aborts_before_reading_the_rest_of_oversized_request(
+    studio, monkeypatch
+):
+    from fastapi import HTTPException, Request
+
+    from api.routers.studio import import_artifact as import_route
+
+    monkeypatch.setattr(service, "MAX_IMPORT_BYTES", 128)
+    receive = AsyncMock(
+        side_effect=[
+            {"type": "http.request", "body": b"x" * 100, "more_body": True},
+            {"type": "http.request", "body": b"x" * 30, "more_body": True},
+            {"type": "http.request", "body": b"x" * 10000, "more_body": False},
+        ]
+    )
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/studio/artifacts/import",
+            "headers": [],
+        },
+        receive=receive,
+    )
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(import_route(request))
+    assert error.value.status_code == 413
+    assert receive.await_count == 2
+    assert not studio.directory.exists()
+    studio.provision.assert_not_called()

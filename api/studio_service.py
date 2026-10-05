@@ -3,6 +3,7 @@
 import asyncio
 import fcntl
 import json
+import math
 import os
 import re
 import tempfile
@@ -19,11 +20,15 @@ from pydantic import ValidationError
 from api.studio_models import (
     StudioArtifact,
     StudioArtifactPatch,
+    StudioArtifactSummary,
     StudioCapabilities,
     StudioCard,
+    StudioCopyRequest,
     StudioDraft,
     StudioGenerateRequest,
+    StudioImportRequest,
     StudioKind,
+    StudioLibrary,
     StudioReadiness,
     StudioReadinessItem,
     StudioSource,
@@ -37,10 +42,12 @@ from open_notebook.exceptions import ConfigurationError, NotFoundError
 MAX_INPUT_CHARS = 60_000
 MAX_ITEM_CHARS = 12_000
 MAX_ARTIFACT_BYTES = 1_000_000
+MAX_IMPORT_BYTES = 1_000_000
 MAX_ARTIFACTS = 1000
 AI_TIMEOUT_SECONDS = 180
 MAX_CONCURRENT_AI = 2
 _AI_SLOTS = WeakKeyDictionary()
+ORPHAN_WARNING = "The original notebook is unavailable. These references are preserved snapshots; restore a copy into an existing notebook before editing."
 
 
 class StudioError(Exception):
@@ -549,8 +556,190 @@ async def generate_artifact(request: StudioGenerateRequest) -> StudioArtifact:
 
 async def get_artifact(artifact_id: str) -> StudioArtifact:
     artifact = await asyncio.to_thread(_read, artifact_id)
-    await _notebook(artifact.notebook_id)
-    return artifact
+    try:
+        await _notebook(artifact.notebook_id)
+    except StudioError as error:
+        if error.status_code != 404:
+            raise
+        return artifact.model_copy(
+            update={
+                "notebook_available": False,
+                "reference_status": "snapshot",
+                "warnings": _warnings_with(artifact.warnings, ORPHAN_WARNING),
+            }
+        )
+    return artifact.model_copy(update={"notebook_available": True})
+
+
+def _warnings_with(warnings, *additional):
+    preserved = list(dict.fromkeys(warnings))
+    additions = [warning for warning in additional if warning not in preserved]
+    if len(preserved) + len(additions) > 200:
+        additions.append(
+            "Earlier review warnings were abbreviated to stay within the artifact limit."
+        )
+    return preserved[: 200 - len(additions)] + additions
+
+
+def _validate_transfer(artifact):
+    references = artifact.source_ids + artifact.note_ids
+    if len(set(references)) != len(references):
+        raise StudioError(400, "Artifact source and note references must be unique.")
+    snapshot_ids = [source.id for source in artifact.sources]
+    if len(set(snapshot_ids)) != len(snapshot_ids) or set(snapshot_ids) != set(
+        references
+    ):
+        raise StudioError(
+            400,
+            "Artifact source snapshots must uniquely cover every source and note reference.",
+        )
+    _validate_cards(artifact.cards, set(references), artifact.kind)
+
+
+async def _transfer_artifact(artifact, notebook_id, title, operation):
+    _validate_transfer(artifact)
+    notebook = await _notebook(notebook_id)
+    sources = await notebook.get_sources(include_full_text=False)
+    notes = await notebook.get_notes(include_content=False)
+    source_ids = {str(source.id) for source in sources}
+    note_ids = {str(note.id) for note in notes}
+    linked = (
+        artifact.reference_status == "notebook"
+        and artifact.notebook_id == notebook_id
+        and set(artifact.source_ids).issubset(source_ids)
+        and set(artifact.note_ids).issubset(note_ids)
+    )
+    status = "notebook" if linked else "snapshot"
+    warnings = _warnings_with(
+        [warning for warning in artifact.warnings if warning != ORPHAN_WARNING],
+        f"{operation} artifact. Review its content and provenance against the original evidence.",
+    )
+    if not linked:
+        warnings = _warnings_with(
+            warnings,
+            "References are preserved source snapshots, not verified links to sources or notes in this notebook. No source mapping was inferred.",
+        )
+    now = datetime.now(timezone.utc).isoformat()
+    transferred = StudioArtifact.model_validate(
+        {
+            **artifact.model_dump(),
+            "id": uuid.uuid4().hex,
+            "notebook_id": notebook_id,
+            "title": title,
+            "created_at": now,
+            "updated_at": now,
+            "reference_status": status,
+            "notebook_available": True,
+            "warnings": warnings,
+        }
+    )
+    await _notebook(notebook_id)
+    return await asyncio.to_thread(_create, transferred)
+
+
+async def import_artifact(request: StudioImportRequest) -> StudioArtifact:
+    return await _transfer_artifact(
+        request.artifact, request.notebook_id, request.artifact.title, "Imported"
+    )
+
+
+async def copy_artifact(artifact_id: str, request: StudioCopyRequest) -> StudioArtifact:
+    original = await get_artifact(artifact_id)
+    notebook_id = request.notebook_id or original.notebook_id
+    title = request.title or (original.title[:293].rstrip() + " (copy)")
+    return await _transfer_artifact(original, notebook_id, title, "Copied")
+
+
+def _summary(artifact, available):
+    return StudioArtifactSummary(
+        **{
+            name: getattr(artifact, name)
+            for name in (
+                "id",
+                "notebook_id",
+                "kind",
+                "title",
+                "audience",
+                "language",
+                "style",
+                "generation",
+                "created_at",
+                "updated_at",
+            )
+        },
+        card_count=len(artifact.cards),
+        reference_status=artifact.reference_status if available else "snapshot",
+        notebook_available=available,
+    )
+
+
+async def get_library(
+    notebook_id=None,
+    scope="notebook",
+    query="",
+    kind=None,
+    sort="updated",
+    page=1,
+    page_size=12,
+) -> StudioLibrary:
+    if scope == "notebook" and notebook_id:
+        await _notebook(notebook_id)
+        notebook_ids = {notebook_id}
+    else:
+        notebook_ids = {str(notebook.id) for notebook in await Notebook.get_all()}
+
+    def read_summaries():
+        summaries = []
+        for path in sorted(storage_directory().glob("*.json"))[:MAX_ARTIFACTS]:
+            if not re.fullmatch(r"[0-9a-f]{32}", path.stem):
+                continue
+            try:
+                artifact = _read(path.stem)
+            except StudioError:
+                continue
+            available = artifact.notebook_id in notebook_ids
+            if scope == "orphaned":
+                if available:
+                    del artifact
+                    continue
+            elif not available:
+                del artifact
+                continue
+            # Keep only small DTOs; discard each full artifact before reading the next.
+            summaries.append(_summary(artifact, available))
+            del artifact
+        total = len(summaries)
+        needle = query.casefold().strip()
+        filtered = [
+            item
+            for item in summaries
+            if (kind is None or item.kind == kind)
+            and (
+                not needle
+                or needle in item.title.casefold()
+                or needle in item.audience.casefold()
+            )
+        ]
+        filtered.sort(key=lambda item: item.id)
+        if sort == "title":
+            filtered.sort(key=lambda item: item.title.casefold())
+        else:
+            field = "created_at" if sort == "created" else "updated_at"
+            filtered.sort(key=lambda item: getattr(item, field), reverse=True)
+        filtered_total = len(filtered)
+        pages = max(1, math.ceil(filtered_total / page_size))
+        current_page = min(page, pages)
+        offset = (current_page - 1) * page_size
+        return StudioLibrary(
+            items=filtered[offset : offset + page_size],
+            total=total,
+            filtered_total=filtered_total,
+            page=current_page,
+            page_size=page_size,
+            pages=pages,
+        )
+
+    return await asyncio.to_thread(read_summaries)
 
 
 async def list_artifacts(notebook_id: str | None = None) -> list[StudioArtifact]:
@@ -605,7 +794,11 @@ def _patch(artifact_id, patch):
 async def patch_artifact(
     artifact_id: str, patch: StudioArtifactPatch
 ) -> StudioArtifact:
-    await get_artifact(artifact_id)
+    artifact = await get_artifact(artifact_id)
+    if not artifact.notebook_available:
+        raise StudioError(
+            409, "Restore a copy into an existing notebook before editing."
+        )
     return await asyncio.to_thread(_patch, artifact_id, patch)
 
 

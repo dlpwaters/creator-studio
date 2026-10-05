@@ -72,6 +72,48 @@ export interface StudioArtifact {
   warnings: string[]
   generation: 'ai' | 'extractive'
   model_id?: string | null
+  reference_status?: 'notebook' | 'snapshot'
+  notebook_available?: boolean
+}
+export interface StudioArtifactSummary {
+  id: string
+  notebook_id: string
+  kind: StudioKind
+  title: string
+  audience: string
+  language: string
+  style: string
+  generation: 'ai' | 'extractive'
+  created_at: string
+  updated_at: string
+  card_count: number
+  reference_status: 'notebook' | 'snapshot'
+  notebook_available: boolean
+}
+export interface StudioLibraryQuery {
+  scope?: 'notebook' | 'orphaned'
+  query?: string
+  kind?: StudioKind
+  sort?: 'updated' | 'title' | 'created'
+  page?: number
+  page_size?: number
+}
+export interface StudioLibraryPage {
+  items: StudioArtifactSummary[]
+  total: number
+  filtered_total: number
+  page: number
+  page_size: number
+  pages: number
+}
+export interface StudioImportRequest {
+  format_version: 1
+  notebook_id: string
+  artifact: Record<string, unknown>
+}
+export interface StudioCopyRequest {
+  notebook_id?: string
+  title?: string
 }
 export interface StudioUpdateRequest {
   title?: string

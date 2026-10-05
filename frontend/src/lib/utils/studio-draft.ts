@@ -20,14 +20,14 @@ function validCard(
   const card = value as StudioCard
   const allowedSources = new Set([...artifact.source_ids, ...artifact.note_ids])
   return (
-    text(card.id, 300) &&
-    artifact.cards.some((existing) => existing.id === card.id) &&
+    text(card.id, 200) &&
+    !!card.id.trim() &&
+    card.id === card.id.trim() &&
     text(card.title, 300) &&
     text(card.body, 6000) &&
     text(card.notes, 6000) &&
     textList(card.bullets, 16, 600) &&
-    textList(card.source_ids, 150, 300) &&
-    card.source_ids.length > 0 &&
+    textList(card.source_ids, 150, 200) &&
     card.source_ids.every((id) => allowedSources.has(id)) &&
     Number.isInteger(card.duration_seconds) &&
     card.duration_seconds >= 5 &&

@@ -107,9 +107,49 @@ class StudioArtifact(StudioDraft):
     source_ids: list[RecordId] = Field(max_length=150)
     note_ids: list[RecordId] = Field(max_length=150)
     sources: list[StudioSource] = Field(max_length=150)
-    warnings: list[str] = Field(default_factory=list, max_length=200)
+    warnings: list[Annotated[str, StringConstraints(max_length=2000)]] = Field(
+        default_factory=list, max_length=200
+    )
     generation: Literal["ai", "extractive"]
     model_id: RecordId | None = None
+    reference_status: Literal["notebook", "snapshot"] = "notebook"
+    notebook_available: bool = True
+
+
+class StudioImportRequest(StudioBase):
+    format_version: int = Field(default=1, ge=1, le=1, strict=True)
+    notebook_id: RecordId
+    artifact: StudioArtifact
+
+
+class StudioCopyRequest(StudioBase):
+    notebook_id: RecordId | None = None
+    title: ShortText | None = None
+
+
+class StudioArtifactSummary(StudioBase):
+    id: str
+    notebook_id: RecordId
+    kind: StudioKind
+    title: ShortText
+    audience: ShortText
+    language: str
+    style: str
+    generation: Literal["ai", "extractive"]
+    created_at: str
+    updated_at: str
+    card_count: int
+    reference_status: Literal["notebook", "snapshot"]
+    notebook_available: bool
+
+
+class StudioLibrary(StudioBase):
+    items: list[StudioArtifactSummary]
+    total: int
+    filtered_total: int
+    page: int
+    page_size: int
+    pages: int
 
 
 class StudioArtifactPatch(StudioBase):

@@ -1,5 +1,11 @@
 // English fallback section; other locales inherit it through the locale registry.
+import { studioEditing } from './studio-editing'
+import { studioLibrary } from './studio-library'
+import { studioTransfer } from './studio-transfer'
 export const studioTranslations = {
+  ...studioEditing,
+  ...studioLibrary,
+  ...studioTransfer,
   title: 'Creation studio',
   eyebrow: 'Research → understanding',
   description:
@@ -67,9 +73,6 @@ export const studioTranslations = {
   selectArtifact: 'Choose something to review',
   selectArtifactHelp:
     'Open saved work from your library to preview, edit, study, or export it.',
-  emptyLibrary: 'Your ideas start here',
-  emptyLibraryHelp:
-    'Create a first draft from this notebook. Saved work appears here for review and export.',
   noNotebook: 'Start with a notebook',
   noNotebookHelp:
     'Choose the research you want to work with, then turn it into a useful learning artifact.',
