@@ -1,7 +1,7 @@
 'use client'
 
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -45,7 +45,7 @@ export function NoteEditorDialog({ open, onOpenChange, notebookId, note }: NoteE
   const {
     handleSubmit,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     setValue,
   } = useForm<CreateNoteFormData>({
@@ -57,19 +57,26 @@ export function NoteEditorDialog({ open, onOpenChange, notebookId, note }: NoteE
   })
   const watchTitle = useWatch({ control, name: 'title' })
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
+  const initializedNote = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) {
+      initializedNote.current = null
       reset({ title: '', content: '' })
       return
     }
+
+    const editorKey = noteIdWithPrefix || 'new'
+    // A background refresh may update a clean form, but must not replace a draft.
+    if (initializedNote.current === editorKey && isDirty) return
 
     const source = fetchedNote ?? note
     const title = source?.title ?? ''
     const content = source?.content ?? ''
 
     reset({ title, content })
-  }, [open, note, fetchedNote, reset])
+    initializedNote.current = editorKey
+  }, [open, note, noteIdWithPrefix, fetchedNote, isDirty, reset])
 
   useEffect(() => {
     if (!open) return
@@ -138,7 +145,7 @@ export function NoteEditorDialog({ open, onOpenChange, notebookId, note }: NoteE
                   id="note-title"
                   name="title"
                   value={watchTitle ?? ''}
-                  onSave={(value) => setValue('title', value || '')}
+                  onSave={(value) => setValue('title', value || '', { shouldDirty: true })}
                   placeholder={t('sources.addTitle')}
                   emptyText={t('sources.untitledNote')}
                   className="text-xl font-semibold"

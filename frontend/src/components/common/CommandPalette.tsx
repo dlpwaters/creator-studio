@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useId } from 'react'
-import { useRouter } from 'next/navigation'
+import { requestNavigation } from '@/lib/utils/request-navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useCreateDialogs } from '@/lib/hooks/use-create-dialogs'
 import { useNotebooks } from '@/lib/hooks/use-notebooks'
 import { useTheme } from '@/lib/stores/theme-store'
@@ -28,6 +29,7 @@ import {
   Moon,
   Monitor,
   Loader2,
+  Presentation,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/hooks/use-translation'
 import type { TFunction } from 'i18next'
@@ -35,6 +37,7 @@ import type { TFunction } from 'i18next'
 const getNavigationItems = (t: TFunction) => [
   { name: t('navigation.sources'), href: '/sources', icon: FileText, keywords: ['files', 'documents', 'upload'] },
   { name: t('navigation.notebooks'), href: '/notebooks', icon: Book, keywords: ['notes', 'research', 'projects'] },
+  { name: t('workflows.studio'), href: '/studio', icon: Presentation, keywords: ['slides', 'presentation', 'video', 'brief', 'quiz', 'flashcards', 'mindmap', 'timeline', 'create', 'material'] },
   { name: t('navigation.askAndSearch'), href: '/search', icon: Search, keywords: ['find', 'query'] },
   { name: t('navigation.podcasts'), href: '/podcasts', icon: Mic, keywords: ['audio', 'episodes', 'generate'] },
   { name: t('navigation.models'), href: '/settings/api-keys', icon: Bot, keywords: ['ai', 'llm', 'providers', 'openai', 'anthropic'] },
@@ -65,6 +68,14 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const router = useRouter()
+  const pathname = usePathname()
+  const notebookSegment = pathname?.match(/^\/notebooks\/([^/]+)\/?$/)?.[1]
+  let activeNotebookId: string | undefined
+  try {
+    activeNotebookId = notebookSegment ? decodeURIComponent(notebookSegment) : undefined
+  } catch {
+    activeNotebookId = undefined
+  }
   const { openSourceDialog, openNotebookDialog, openPodcastDialog } = useCreateDialogs()
   const { setTheme } = useTheme()
   const { data: notebooks, isLoading: notebooksLoading } = useNotebooks(false)
@@ -114,17 +125,17 @@ export function CommandPalette() {
   }, [])
 
   const handleNavigate = useCallback((href: string) => {
-    handleSelect(() => router.push(href))
+    handleSelect(() => requestNavigation(() => router.push(href)))
   }, [handleSelect, router])
 
   const handleSearch = useCallback(() => {
     if (!query.trim()) return
-    handleSelect(() => router.push(`/search?q=${encodeURIComponent(query)}&mode=search`))
+    handleSelect(() => requestNavigation(() => router.push(`/search?q=${encodeURIComponent(query)}&mode=search`)))
   }, [handleSelect, router, query])
 
   const handleAsk = useCallback(() => {
     if (!query.trim()) return
-    handleSelect(() => router.push(`/search?q=${encodeURIComponent(query)}&mode=ask`))
+    handleSelect(() => requestNavigation(() => router.push(`/search?q=${encodeURIComponent(query)}&mode=ask`)))
   }, [handleSelect, router, query])
 
   const handleCreate = useCallback((action: string) => {
@@ -151,6 +162,7 @@ export function CommandPalette() {
       createItems.some(item =>
         item.name.toLowerCase().includes(queryLower)
       ) ||
+      (!!activeNotebookId && `${t('workflows.createFromNotebook')} slides presentation video quiz flashcards studio`.toLowerCase().includes(queryLower)) ||
       themeItems.some(item =>
         item.name.toLowerCase().includes(queryLower) ||
         item.keywords.some(k => k.includes(queryLower))
@@ -160,7 +172,7 @@ export function CommandPalette() {
         (nb.description && nb.description.toLowerCase().includes(queryLower))
       ) ?? false)
     )
-  }, [queryLower, notebooks, navigationItems, createItems, themeItems])
+  }, [queryLower, notebooks, navigationItems, createItems, themeItems, activeNotebookId, t])
 
   // Determine if we should show the Search/Ask section at the top
   const showSearchFirst = query.trim() && !hasCommandMatch
@@ -242,6 +254,15 @@ export function CommandPalette() {
 
         {/* Create */}
         <CommandGroup heading={t('navigation.create')}>
+          {activeNotebookId && (
+            <CommandItem
+              value={`${t('workflows.createFromNotebook')} slides presentation video quiz flashcards studio`}
+              onSelect={() => handleNavigate(`/studio?notebook=${encodeURIComponent(activeNotebookId)}`)}
+            >
+              <Presentation className="h-4 w-4" />
+              <span>{t('workflows.createFromNotebook')}</span>
+            </CommandItem>
+          )}
           {createItems.map((item) => (
             <CommandItem
               key={item.action}

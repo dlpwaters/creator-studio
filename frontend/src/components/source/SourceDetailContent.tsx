@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import ReactMarkdown from 'react-markdown'
@@ -98,53 +98,77 @@ export function SourceDetailContent({
   const [selectedInsight, setSelectedInsight] = useState<SourceInsightResponse | null>(null)
   const [insightToDelete, setInsightToDelete] = useState<string | null>(null)
   const [deletingInsight, setDeletingInsight] = useState(false)
+  const activeSourceId = useRef<string | null>(null)
+  const viewVersion = useRef(0)
+  const sourceRequest = useRef(0)
+  const insightsRequest = useRef(0)
 
   const fetchSource = useCallback(async () => {
+    if (activeSourceId.current !== sourceId) return
+    const view = viewVersion.current
+    const request = ++sourceRequest.current
+    const isCurrent = () => viewVersion.current === view && sourceRequest.current === request
     try {
       setLoading(true)
+      setError(null)
       const data = await sourcesApi.get(sourceId)
+      if (!isCurrent()) return
       setSource(data)
-      if (typeof data.file_available === 'boolean') {
-        setFileAvailable(data.file_available)
-      } else if (!data.asset?.file_path) {
-        setFileAvailable(null)
-      } else {
-        setFileAvailable(null)
-      }
+      setFileAvailable(typeof data.file_available === 'boolean' ? data.file_available : null)
     } catch (err) {
+      if (!isCurrent()) return
       console.error('Failed to fetch source:', err)
       setError(t('sources.loadFailed'))
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
   }, [sourceId, t])
 
   const fetchInsights = useCallback(async () => {
+    if (activeSourceId.current !== sourceId) return
+    const view = viewVersion.current
+    const request = ++insightsRequest.current
+    const isCurrent = () => viewVersion.current === view && insightsRequest.current === request
     try {
       setLoadingInsights(true)
       const data = await insightsApi.listForSource(sourceId)
-      setInsights(data)
+      if (isCurrent()) setInsights(data)
     } catch (err) {
-      console.error('Failed to fetch insights:', err)
+      if (isCurrent()) console.error('Failed to fetch insights:', err)
     } finally {
-      setLoadingInsights(false)
+      if (isCurrent()) setLoadingInsights(false)
     }
   }, [sourceId])
 
   const fetchTransformations = useCallback(async () => {
+    const view = viewVersion.current
     try {
       const data = await transformationsApi.list()
-      setTransformations(data)
+      if (viewVersion.current === view) setTransformations(data)
     } catch (err) {
-      console.error('Failed to fetch transformations:', err)
+      if (viewVersion.current === view) console.error('Failed to fetch transformations:', err)
     }
   }, [])
 
   useEffect(() => {
+    activeSourceId.current = sourceId
+    viewVersion.current += 1
+    setSource(null)
+    setInsights([])
+    setError(null)
+    setFileAvailable(null)
+    setSelectedInsight(null)
+    setInsightToDelete(null)
+    setLoading(!!sourceId)
     if (sourceId) {
       void fetchSource()
       void fetchInsights()
       void fetchTransformations()
+    }
+    return () => {
+      activeSourceId.current = null
+      // Invalidate pending responses on a source change or unmount.
+      viewVersion.current += 1
     }
   }, [fetchInsights, fetchSource, fetchTransformations, sourceId])
 
@@ -213,16 +237,19 @@ export function SourceDetailContent({
   }
 
   const handleUpdateTitle = async (title: string) => {
-    if (!source || title === source.title) return
+    if (!source || source.id !== sourceId || title === source.title) return
+    const view = viewVersion.current
 
     try {
       await sourcesApi.update(sourceId, { title })
       toast.success(t('common.success'))
-      setSource({ ...source, title })
+      if (viewVersion.current === view) {
+        setSource(current => current?.id === sourceId ? { ...current, title } : current)
+      }
     } catch (err) {
       console.error('Failed to update source title:', err)
       toast.error(t('common.error'))
-      await fetchSource()
+      if (viewVersion.current === view) await fetchSource()
     }
   }
 
@@ -355,13 +382,14 @@ export function SourceDetailContent({
   }, [source?.asset?.url])
 
   const handleDelete = async () => {
-    if (!source) return
+    if (!source || source.id !== sourceId) return
+    const view = viewVersion.current
 
     if (confirm(t('sources.deleteSourceConfirm') || t('common.confirm'))) {
       try {
         await sourcesApi.delete(source.id)
         toast.success(t('common.success'))
-        onClose?.()
+        if (viewVersion.current === view) onClose?.()
       } catch (error) {
         console.error('Failed to delete source:', error)
         toast.error(t('common.error'))
@@ -369,7 +397,7 @@ export function SourceDetailContent({
     }
   }
 
-  if (loading) {
+  if (loading || (source && source.id !== sourceId)) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <LoadingSpinner />

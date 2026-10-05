@@ -43,6 +43,14 @@ describe('AppSidebar', () => {
     expect(toggleCollapse).toHaveBeenCalled()
   })
 
+  it('exposes the creation studio and marks its route current', () => {
+    vi.mocked(usePathname).mockReturnValue('/studio')
+    render(<AppSidebar />)
+    expect(screen.getByRole('link', { name: 'workflows.studio' })).toHaveAttribute('href', '/studio')
+    expect(screen.getByRole('link', { name: 'workflows.studio' })).toHaveAttribute('aria-current', 'page')
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1)
+  })
+
   it('shows collapsed view when isCollapsed is true', () => {
     vi.mocked(useSidebarStore).mockReturnValue({
       isCollapsed: true,

@@ -97,6 +97,7 @@ export function useCreateSource() {
       // Invalidate queries for all relevant notebooks with immediate refetch
       if (variables.notebooks) {
         variables.notebooks.forEach(notebookId => {
+          queryClient.invalidateQueries({ queryKey: ['studio', 'readiness', notebookId] })
           queryClient.invalidateQueries({
             queryKey: QUERY_KEYS.sources(notebookId),
             refetchType: 'active'
@@ -107,6 +108,7 @@ export function useCreateSource() {
           })
         })
       } else if (variables.notebook_id) {
+        queryClient.invalidateQueries({ queryKey: ['studio', 'readiness', variables.notebook_id] })
         queryClient.invalidateQueries({
           queryKey: QUERY_KEYS.sources(variables.notebook_id),
           refetchType: 'active'
@@ -115,6 +117,8 @@ export function useCreateSource() {
           queryKey: QUERY_KEYS.sourcesInfinite(variables.notebook_id),
           refetchType: 'active'
         })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       }
 
       // Invalidate general sources query too with immediate refetch
@@ -155,6 +159,7 @@ export function useUpdateSource() {
     mutationFn: ({ id, data }: { id: string; data: UpdateSourceRequest }) =>
       sourcesApi.update(id, data),
     onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       // Invalidate ALL sources queries (both general and notebook-specific)
       queryClient.invalidateQueries({ queryKey: ['sources'] })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.source(id) })
@@ -181,6 +186,7 @@ export function useDeleteSource() {
   return useMutation({
     mutationFn: (id: string) => sourcesApi.delete(id),
     onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       // Invalidate ALL sources queries (both general and notebook-specific)
       queryClient.invalidateQueries({ queryKey: ['sources'] })
       // Also invalidate the specific source
@@ -209,6 +215,7 @@ export function useFileUpload() {
     mutationFn: ({ file, notebookId }: { file: File; notebookId: string }) =>
       sourcesApi.upload(file, notebookId),
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness', variables.notebookId] })
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.sources(variables.notebookId)
       })
@@ -266,6 +273,7 @@ export function useRetrySource() {
   return useMutation({
     mutationFn: (sourceId: string) => sourcesApi.retry(sourceId),
     onSuccess: (result, sourceId) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       // Invalidate status query to refetch latest status
       queryClient.invalidateQueries({
         queryKey: ['sources', sourceId, 'status']
@@ -310,6 +318,7 @@ export function useAddSourcesToNotebook() {
       return { successes, failures, total: sourceIds.length }
     },
     onSuccess: (result, { notebookId, sourceIds }) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness', notebookId] })
       // Invalidate ALL sources queries to refresh all lists
       queryClient.invalidateQueries({ queryKey: ['sources'] })
       // Specifically invalidate the notebook's sources
@@ -363,6 +372,7 @@ export function useRemoveSourceFromNotebook() {
       return notebooksApi.removeSource(notebookId, sourceId)
     },
     onSuccess: (_, { notebookId, sourceId }) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness', notebookId] })
       // Invalidate ALL sources queries to refresh all lists
       queryClient.invalidateQueries({ queryKey: ['sources'] })
       // Specifically invalidate the notebook's sources

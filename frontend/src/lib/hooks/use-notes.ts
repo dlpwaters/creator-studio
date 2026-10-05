@@ -31,6 +31,7 @@ export function useCreateNote() {
   return useMutation({
     mutationFn: (data: CreateNoteRequest) => notesApi.create(data),
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: variables.notebook_id ? ['studio', 'readiness', variables.notebook_id] : ['studio', 'readiness'] })
       queryClient.invalidateQueries({ 
         queryKey: QUERY_KEYS.notes(variables.notebook_id) 
       })
@@ -58,6 +59,7 @@ export function useUpdateNote() {
     mutationFn: ({ id, data }: { id: string; data: UpdateNoteRequest }) =>
       notesApi.update(id, data),
     onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notes() })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.note(id) })
       toast({
@@ -83,6 +85,7 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: (id: string) => notesApi.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studio', 'readiness'] })
       // Invalidate all notes queries (with and without notebook IDs)
       queryClient.invalidateQueries({ queryKey: ['notes'] })
       toast({

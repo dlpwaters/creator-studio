@@ -39,6 +39,7 @@ import {
   Plus,
   Wrench,
   Command,
+  Presentation,
 } from 'lucide-react'
 
 const getNavigation = (t: TFunction) => [
@@ -56,8 +57,11 @@ const getNavigation = (t: TFunction) => [
     ],
   },
   {
-    title: t('navigation.create'),
-    items: [{ name: t('navigation.podcasts'), href: '/podcasts', icon: Mic }],
+    title: t('workflows.createGroup'),
+    items: [
+      { name: t('workflows.studio'), href: '/studio', icon: Presentation },
+      { name: t('navigation.podcasts'), href: '/podcasts', icon: Mic },
+    ],
   },
   {
     title: t('navigation.manage'),

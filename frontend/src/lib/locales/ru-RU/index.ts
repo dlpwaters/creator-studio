@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const ruRU = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "Перейти к содержимому",
     openNavigation: "Открыть навигацию",
@@ -935,7 +940,6 @@ export const ruRU = {
     testConnection: "Проверить подключение",
     testSuccess: "Подключение успешно",
     testFailed: "Проверка подключения не удалась",
-    syncModels: "Синхронизировать модели",
     syncSuccess: "Обнаружено {discovered} моделей, добавлено {new} новых",
     syncNoNew: "Обнаружено {count} моделей, все уже зарегистрированы",
     syncFailed: "Не удалось синхронизировать модели",

@@ -71,6 +71,8 @@ FROM python:3.12-slim-trixie AS runtime
 # Add Node.js 22.x LTS for running frontend
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ffmpeg \
+    espeak-ng \
+    fonts-dejavu-core \
     supervisor \
     curl \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const zhCN = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "跳转到内容",
     openNavigation: "打开导航",
@@ -935,7 +940,6 @@ export const zhCN = {
     testConnection: "测试连接",
     testSuccess: "连接成功",
     testFailed: "连接测试失败",
-    syncModels: "同步模型",
     syncSuccess: "发现 {discovered} 个模型，新增 {new} 个",
     syncNoNew: "发现 {count} 个模型，全部已注册",
     syncFailed: "同步模型失败",

@@ -140,5 +140,6 @@ specs/
 *.local.yml
 **/*.local.md
 .harness/
+/node_modules/
 
 .mcp.json

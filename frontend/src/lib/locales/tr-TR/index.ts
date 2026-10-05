@@ -1,4 +1,9 @@
+import { studioTranslations } from '../studio'
+import { workflowTranslations } from '../workflows'
+
 export const trTR = {
+  studio: studioTranslations,
+  workflows: workflowTranslations,
   workspace: {
     skipToContent: "İçeriğe geç",
     openNavigation: "Gezinmeyi aç",
@@ -935,7 +940,6 @@ export const trTR = {
     testConnection: "Bağlantıyı Test Et",
     testSuccess: "Bağlantı başarılı",
     testFailed: "Bağlantı testi başarısız",
-    syncModels: "Modelleri Senkronize Et",
     syncSuccess: "{discovered} model keşfedildi, {new} yeni eklendi",
     syncNoNew: "{count} model keşfedildi, tamamı zaten kayıtlı",
     syncFailed: "Modeller senkronize edilemedi",

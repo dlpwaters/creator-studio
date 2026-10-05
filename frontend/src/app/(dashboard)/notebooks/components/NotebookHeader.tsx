@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { NotebookResponse } from '@/lib/types/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Archive, ArchiveRestore, Trash2, ArrowLeft } from 'lucide-react'
+import { Archive, ArchiveRestore, Trash2, ArrowLeft, Presentation } from 'lucide-react'
 import { useUpdateNotebook } from '@/lib/hooks/use-notebooks'
 import { NotebookDeleteDialog } from './NotebookDeleteDialog'
 import { formatDistanceToNow } from 'date-fns'
 import { getDateLocale } from '@/lib/utils/date-locale'
 import { InlineEdit } from '@/components/common/InlineEdit'
 import { useTranslation } from '@/lib/hooks/use-translation'
+import { ResearchReadiness } from '@/components/notebooks/ResearchReadiness'
 
 interface NotebookHeaderProps {
   notebook: NotebookResponse
@@ -77,7 +78,13 @@ export function NotebookHeader({ notebook }: NotebookHeaderProps) {
                 <Badge variant="secondary">{t('notebooks.archived')}</Badge>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link href={`/studio?notebook=${encodeURIComponent(notebook.id)}`}>
+                  <Presentation className="h-4 w-4" />
+                  {t('workflows.createFromNotebook')}
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" onClick={handleArchiveToggle}>
                 {notebook.archived ? (
                   <>
@@ -132,6 +139,7 @@ export function NotebookHeader({ notebook }: NotebookHeaderProps) {
               }),
             )}
           </div>
+          <ResearchReadiness key={notebook.id} notebookId={notebook.id} />
         </div>
       </div>
 

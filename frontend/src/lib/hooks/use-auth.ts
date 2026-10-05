@@ -3,6 +3,8 @@
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { consumeLoginRedirect } from '@/lib/utils/login-redirect'
+import { requestNavigation } from '@/lib/utils/request-navigation'
 
 export function useAuth() {
   const router = useRouter()
@@ -28,6 +30,8 @@ export function useAuth() {
           if (required) {
             checkAuth()
           }
+        }).catch(() => {
+          // The store retains the connection error for the login recovery UI.
         })
       } else if (authRequired) {
         // Auth is required, check credentials
@@ -42,25 +46,21 @@ export function useAuth() {
     const success = await login(password)
     if (success) {
       // Check if there's a stored redirect path
-      const redirectPath = sessionStorage.getItem('redirectAfterLogin')
-      if (redirectPath) {
-        sessionStorage.removeItem('redirectAfterLogin')
-        router.push(redirectPath)
-      } else {
-        router.push('/notebooks')
-      }
+      router.push(consumeLoginRedirect())
     }
     return success
   }
 
   const handleLogout = () => {
-    logout()
-    router.push('/login')
+    requestNavigation(() => {
+      logout()
+      router.push('/login')
+    })
   }
 
   return {
     isAuthenticated,
-    isLoading: isLoading || !hasHydrated, // Treat lack of hydration as loading
+    isLoading: isLoading || !hasHydrated || (authRequired === null && !error),
     error,
     login: handleLogin,
     logout: handleLogout

@@ -78,9 +78,8 @@ export default function SearchPage() {
 
   const hasEmbeddingModel = !!modelDefaults?.default_embedding_model
 
-  // Track if we've already auto-triggered from URL params
-  const hasAutoTriggeredRef = useRef(false)
-  const lastUrlParamsRef = useRef({ q: '', mode: '' })
+  const observedUrl = useRef({ q: urlQuery, mode: urlMode })
+  const dispatchedUrl = useRef<string | null>(null)
 
   const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) return
@@ -102,7 +101,7 @@ export default function SearchPage() {
   }
 
   const handleAsk = useCallback(() => {
-    if (!askQuestion.trim() || !modelDefaults?.default_chat_model) return
+    if (!askQuestion.trim() || !modelDefaults?.default_chat_model || ask.isStreaming) return
 
     const models = customModels || {
       strategy: modelDefaults.default_chat_model,
@@ -113,48 +112,31 @@ export default function SearchPage() {
     ask.sendAsk(askQuestion, models)
   }, [askQuestion, modelDefaults, customModels, ask])
 
-  // Auto-trigger search/ask when arriving with URL params
+  // Synchronize navigation and dispatch its query together, once per URL change.
   useEffect(() => {
-    // Skip if already triggered or no query
-    if (hasAutoTriggeredRef.current || !urlQuery) return
-
-    // Wait for models to load before triggering ask
-    if (urlMode === 'ask' && modelsLoading) return
-
-    if (urlMode === 'search') {
-      handleSearch()
-      hasAutoTriggeredRef.current = true
-    } else if (urlMode === 'ask' && modelDefaults?.default_chat_model) {
-      handleAsk()
-      hasAutoTriggeredRef.current = true
-    }
-  }, [urlQuery, urlMode, modelsLoading, modelDefaults, handleSearch, handleAsk])
-
-  // Handle URL param changes while on page (e.g., from command palette again)
-  useEffect(() => {
-    const currentQ = searchParams?.get('q') || ''
-    const rawCurrentMode = searchParams?.get('mode')
-    const currentMode = rawCurrentMode === 'search' ? 'search' : 'ask'
-
-    // Check if URL params have changed
-    if (currentQ !== lastUrlParamsRef.current.q || currentMode !== lastUrlParamsRef.current.mode) {
-      lastUrlParamsRef.current = { q: currentQ, mode: currentMode }
-
-      if (currentQ) {
-        // Update state based on mode
-        if (currentMode === 'search') {
-          setSearchQuery(currentQ)
-          setActiveTab('search')
-          // Reset trigger flag so we auto-trigger with new params
-          hasAutoTriggeredRef.current = false
-        } else {
-          setAskQuestion(currentQ)
-          setActiveTab('ask')
-          hasAutoTriggeredRef.current = false
-        }
+    if (observedUrl.current.q !== urlQuery || observedUrl.current.mode !== urlMode) {
+      observedUrl.current = { q: urlQuery, mode: urlMode }
+      dispatchedUrl.current = null
+      if (urlQuery) {
+        setActiveTab(urlMode)
+        if (urlMode === 'search') setSearchQuery(urlQuery)
+        else setAskQuestion(urlQuery)
       }
     }
-  }, [searchParams])
+
+    const requestKey = JSON.stringify([urlMode, urlQuery])
+    if (!urlQuery.trim() || dispatchedUrl.current === requestKey) return
+    if (urlMode === 'search') {
+      if (searchMutation.isPending) return
+      dispatchedUrl.current = requestKey
+      searchMutation.mutate({ query: urlQuery, type: searchType, limit: 100, search_sources: searchSources, search_notes: searchNotes, minimum_score: 0.2 })
+    } else {
+      if (modelsLoading || !modelDefaults?.default_chat_model || ask.isStreaming) return
+      dispatchedUrl.current = requestKey
+      const model = modelDefaults.default_chat_model
+      void ask.sendAsk(urlQuery, customModels || { strategy: model, answer: model, finalAnswer: model })
+    }
+  }, [urlQuery, urlMode, modelsLoading, modelDefaults, customModels, searchType, searchSources, searchNotes, searchMutation, ask])
 
   return (
     <AppShell>

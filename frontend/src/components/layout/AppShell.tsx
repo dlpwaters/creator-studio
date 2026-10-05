@@ -27,6 +27,7 @@ export function AppShell({ children }: AppShellProps) {
     ['/sources', 'navigation.sources'],
     ['/search', 'navigation.askAndSearch'],
     ['/podcasts', 'navigation.podcasts'],
+    ['/studio', 'workflows.studio'],
     ['/settings/api-keys', 'navigation.models'],
     ['/settings', 'navigation.settings'],
     ['/transformations', 'navigation.transformations'],

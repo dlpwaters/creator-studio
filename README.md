@@ -232,6 +232,15 @@ Thanks to the [Esperanto](https://github.com/lfnovo/esperanto) library, we suppo
 - **🔍 Intelligent Search**: Full-text and vector search across all your content
 - **💬 Context-Aware Chat**: AI conversations powered by your research materials
 - **📝 AI-Assisted Notes**: Generate insights or write notes manually
+- **🎬 Creation Studio**: Turn selected notebook sources into editable slide decks,
+  captioned explainer videos, briefs, quizzes, flashcards, concept groups, and timelines.
+  Start with local source excerpts or explicitly request an AI draft. Review, edit,
+  save, and export without leaving your research workspace. Search saved work,
+  edit section order and evidence, copy drafts, import JSON exports, and recover
+  retained artifacts from deleted notebooks.
+
+See [Creation Studio](docs/CREATION_STUDIO.md) for formats, source controls,
+local narration, and deployment instructions.
 
 ### Advanced Features
 - **⚡ Reasoning Model Support**: Full support for thinking models like DeepSeek-R1 and Qwen3
