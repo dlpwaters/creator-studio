@@ -1,372 +1,251 @@
-<a id="readme-top"></a>
+# Creator Studio
 
-<!-- [![Contributors][contributors-shield]][contributors-url] -->
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-<!-- [![LinkedIn][linkedin-shield]][linkedin-url] -->
+[![Tests](https://github.com/dlpwaters/creator-studio/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/dlpwaters/creator-studio/actions/workflows/test.yml)
+[![Build](https://github.com/dlpwaters/creator-studio/actions/workflows/build-dev.yml/badge.svg?branch=main)](https://github.com/dlpwaters/creator-studio/actions/workflows/build-dev.yml)
+[![MIT license](https://img.shields.io/github/license/dlpwaters/creator-studio)](LICENSE)
 
+**Research a subject, turn your sources into an editable draft, and export something useful.**
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/lfnovo/open-notebook">
-    <img src="docs/assets/hero.svg" alt="Logo">
-  </a>
+Creator Studio is a self-hosted research and creation workspace built on
+[Open Notebook](https://github.com/lfnovo/open-notebook). Organize sources and notes,
+search and chat with your research, then create slide decks, explainer videos,
+briefs, and study materials in the same workspace.
 
-  <h3 align="center">Open Notebook</h3>
+Start with local source excerpts or explicitly request an AI draft from a configured
+provider. Review the evidence, edit the result, and save or export it. Local
+source-excerpt generation and local video narration make no model-provider calls;
+ingestion, embeddings, chat, podcasts, and AI drafts can use external services,
+depending on your configuration.
 
-  <p align="center">
-    An open source, privacy-focused alternative to Google's Notebook LM!
-    <br /><strong>Join our <a href="https://discord.gg/37XJPXfz2w">Discord server</a> for help, to share workflow ideas, and suggest features!</strong>
-    <br />
-    <a href="https://www.open-notebook.ai"><strong>Checkout our website »</strong></a>
-    <br />
-    <br />
-    <a href="docs/0-START-HERE/index.md">📚 Get Started</a>
-    ·
-    <a href="docs/3-USER-GUIDE/index.md">📖 User Guide</a>
-    ·
-    <a href="docs/2-CORE-CONCEPTS/index.md">✨ Features</a>
-    ·
-    <a href="docs/1-INSTALLATION/index.md">🚀 Deploy</a>
-  </p>
-</div>
+[Get started](#get-started) · [Creation Studio guide](docs/CREATION_STUDIO.md) ·
+[Project status](docs/STATUS.md) · [Report an issue](https://github.com/dlpwaters/creator-studio/issues)
 
-<p align="center">
-<a href="https://trendshift.io/repositories/14536" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14536" alt="lfnovo%2Fopen-notebook | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</p>
+## What you can create
 
-<div align="center">
-  <!-- Keep these links. Translations will automatically update with the README. -->
-  <a href="https://zdoc.app/de/lfnovo/open-notebook">Deutsch</a> | 
-  <a href="https://zdoc.app/es/lfnovo/open-notebook">Español</a> | 
-  <a href="https://zdoc.app/fr/lfnovo/open-notebook">français</a> | 
-  <a href="https://zdoc.app/ja/lfnovo/open-notebook">日本語</a> | 
-  <a href="https://zdoc.app/ko/lfnovo/open-notebook">한국어</a> | 
-  <a href="https://zdoc.app/pt/lfnovo/open-notebook">Português</a> | 
-  <a href="https://zdoc.app/ru/lfnovo/open-notebook">Русский</a> | 
-  <a href="https://zdoc.app/zh/lfnovo/open-notebook">中文</a>
-</div>
+| Draft | Review and use | Export |
+| --- | --- | --- |
+| Slide deck | Edit sections and speaker notes; present with keyboard controls | PowerPoint, HTML, Markdown, JSON |
+| Explainer video | Review timed scenes, captions, and narration text | MP4, SRT, HTML, Markdown, JSON |
+| Brief | Review a concise document with source references | HTML, Markdown, JSON |
+| Quiz | Reveal answers and check multiple-choice responses | HTML, Markdown, JSON |
+| Flashcards | Study one question and answer at a time | HTML, Markdown, JSON |
+| Concept groups | Organize related source passages for review | HTML, Markdown, JSON |
+| Timeline | Review a sequence; verify dates against the sources | HTML, Markdown, JSON |
 
-## A private, multi-model, 100% local, full-featured alternative to Notebook LM
+All drafts support section editing, evidence selection, independent copies,
+searchable saved work, and JSON transfer between installations. You can recover
+retained drafts from deleted notebooks by restoring a copy into an existing
+notebook. Browser-session recovery protects unfinished edits, including new
+sections. Save important work before closing the browser session.
 
-![New Notebook](docs/assets/asset_list.png)
+MP4 exports are silent by default. Optional local narration uses espeak-ng and
+does not call a speech provider. HTML exports are standalone files without remote
+assets and support printing. See the [Studio guide](docs/CREATION_STUDIO.md) for
+format-specific behavior, language support, and limits.
 
-In a world dominated by Artificial Intelligence, having the ability to think 🧠 and acquire new knowledge 💡, is a skill that should not be a privilege for a few, nor restricted to a single provider.
+## Research workspace
 
-**Open Notebook empowers you to:**
-- 🔒 **Control your data** - Keep your research private and secure
-- 🤖 **Choose your AI models** - Support for 18+ providers including OpenAI, Anthropic, Ollama, LM Studio, and more
-- 📚 **Organize multi-modal content** - PDFs, videos, audio, web pages, and more
-- 🎙️ **Generate professional podcasts** - Advanced multi-speaker podcast generation
-- 🔍 **Search intelligently** - Full-text and vector search across all your content
-- 💬 **Chat with context** - AI conversations powered by your research
-- 🌐 **Multi-language UI** - English, Portuguese, Chinese (Simplified & Traditional), Japanese, Russian, and Bengali support
+- Collect PDFs, web pages, audio, video, and other supported documents in notebooks.
+- Track source readiness before selecting evidence for a draft.
+- Write notes, use full-text or vector search, and chat with selected context.
+- Configure multiple AI providers, including OpenAI, Anthropic, Google, Ollama,
+  and compatible endpoints, through the existing provider registry.
+- Use content transformations and the inherited multi-speaker podcast workflow.
+- Work in light or dark themes with responsive layouts and keyboard controls.
 
-Learn more about our project at [https://www.open-notebook.ai](https://www.open-notebook.ai)
+The stack is Python/FastAPI, Next.js/React, and SurrealDB. Internal package names,
+environment variables, and the `open_notebook` service name remain compatible with
+Open Notebook. The GitHub project is named Creator Studio.
 
----
+## Get started
 
-## 🆚 Open Notebook vs Google Notebook LM
+### New installation with Docker
 
-| Feature | Open Notebook | Google Notebook LM | Advantage |
-|---------|---------------|--------------------|-----------|
-| **Privacy & Control** | Self-hosted, your data | Google cloud only | Complete data sovereignty |
-| **AI Provider Choice** | 18+ providers (OpenAI, Anthropic, Ollama, LM Studio, etc.) | Google models only | Flexibility and cost optimization |
-| **Podcast Speakers** | 1-4 speakers with custom profiles | 2 speakers only | Extreme flexibility |
-| **Content Transformations** | Custom and built-in | Limited options | Unlimited processing power |
-| **API Access** | Full REST API | No API | Complete automation |
-| **Deployment** | Docker, cloud, or local | Google hosted only | Deploy anywhere |
-| **Citations** | Basic references (will improve) | Comprehensive with sources | Research integrity |
-| **Customization** | Open source, fully customizable | Closed system | Unlimited extensibility |
-| **Cost** | Pay only for AI usage | Free tier + Monthly subscription | Transparent and controllable |
+You need Git, Docker with Compose v2, and a shell with OpenSSL. These commands are
+for Linux, macOS, or WSL. The build downloads dependencies and can take several
+minutes. You do not need host Python or Node.js for this path.
 
-**Why Choose Open Notebook?**
-- 🔒 **Privacy First**: Your sensitive research stays completely private
-- 💰 **Cost Control**: Choose cheaper AI providers or run locally with Ollama
-- 🎙️ **Better Podcasts**: Full script control and multi-speaker flexibility vs limited 2-speaker deep-dive format
-- 🔧 **Unlimited Customization**: Modify, extend, and integrate as needed
-- 🌐 **No Vendor Lock-in**: Switch providers, deploy anywhere, own your data
+**Already running Open Notebook?** Use the
+[existing-installation upgrade guide](docs/CREATION_STUDIO.md#upgrade-an-existing-installation-safely)
+instead. The fresh-install recipe creates separate Docker volumes; it does not
+move your existing notebooks or credentials.
 
-### Built With
+1. Clone this repository:
 
-[![Python][Python]][Python-url] [![Next.js][Next.js]][Next-url] [![React][React]][React-url] [![SurrealDB][SurrealDB]][SurrealDB-url] [![LangChain][LangChain]][LangChain-url]
+   ```sh
+   git clone https://github.com/dlpwaters/creator-studio.git
+   cd creator-studio
+   ```
 
-## 🚀 Quick Start (2 Minutes)
+2. Create local secrets. This command refuses to overwrite an existing `.env`:
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed
-- That's it! (API keys configured later in the UI)
+   ```sh
+   umask 077
+   test ! -e .env && {
+     printf 'OPEN_NOTEBOOK_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)"
+     printf 'SURREAL_USER=creator\n'
+     printf 'SURREAL_PASSWORD=%s\n' "$(openssl rand -hex 32)"
+   } > .env
+   ```
 
-### Step 1: Get docker-compose.yml
+   Keep `.env` private and back it up securely. Preserve the encryption key when
+   upgrading or restoring data; changing it makes existing encrypted credentials
+   unreadable. If `.env` already exists, review its required settings rather than
+   rerunning this command.
 
-**Option A:** Download directly
-```bash
-curl -o docker-compose.yml https://raw.githubusercontent.com/lfnovo/open-notebook/main/docker-compose.yml
+3. Build Creator Studio from this checkout:
+
+   ```sh
+   docker build -t creator-studio:local .
+   ```
+
+4. Start the application and database:
+
+   ```sh
+   docker compose --env-file .env -p creator-studio \
+     -f examples/docker-compose-creator-studio.yml up -d
+   ```
+
+5. Check startup, then open **http://localhost:8502**:
+
+   ```sh
+   docker compose --env-file .env -p creator-studio \
+     -f examples/docker-compose-creator-studio.yml ps
+   curl --fail http://localhost:5055/health
+   ```
+
+   Allow startup and database migrations to finish if the API is not yet ready.
+   The API reference is at **http://localhost:5055/docs**. The Compose example
+   binds the UI and API to localhost and keeps the database on its private
+   container network. It requires explicit secrets and uses the locally built
+   application image. Upstream `lfnovo/open_notebook` images do not include this
+   fork's Creation Studio changes.
+
+### Configure models when you need AI
+
+Open **Models & API keys**. Add a provider credential, test the connection,
+discover and register models, then assign defaults for chat, transformations,
+and embeddings. Studio AI drafts use a selected language model or the existing
+transformation/chat default. You can start with source excerpts from a note or
+an already extracted source without a model call.
+
+Credentials are stored encrypted on the server. Provider requests may send
+selected research to that provider and incur charges. Use a suitable local model
+when you need local AI processing. OpenAI access uses supported server-side API
+credentials; consumer ChatGPT OAuth sign-in is not implemented. See
+[provider setup](docs/CREATION_STUDIO.md#provider-setup) and
+[AI provider documentation](docs/4-AI-PROVIDERS/index.md).
+
+### Make your first draft
+
+1. Create a notebook and add a source or a note.
+2. Wait for source extraction and resolve any readiness errors.
+3. Choose **Create from notebook**, select a format, and select evidence.
+4. Enter the subject and choose **Source excerpts** or **AI draft**.
+5. Review claims and references, edit the sections, and save.
+6. Export, present, or study the result.
+
+## Configuration, storage, and upgrades
+
+| Setting | Purpose |
+| --- | --- |
+| `OPEN_NOTEBOOK_ENCRYPTION_KEY` | Required to encrypt stored provider credentials; preserve it across upgrades |
+| `SURREAL_USER`, `SURREAL_PASSWORD` | Database credentials shared by the two services in the fresh-install example |
+| `OPEN_NOTEBOOK_PASSWORD` | Optional installation password; set before allowing access beyond localhost |
+| `CORS_ORIGINS` | Browser origins allowed to call the API; the example restricts them to the local UI |
+| `API_URL` | Public API address when using a custom domain or reverse proxy |
+| `CREATOR_STUDIO_IMAGE` | Optional application image override in the Compose example; defaults to `creator-studio:local` |
+
+The example persists research in the `surreal_data` volume and application files
+in `notebook_data`. Studio artifacts live under `/app/data/studio` in that second
+volume. Back up **both volumes and the encryption key** before upgrading.
+`docker compose down` preserves named volumes; adding `--volumes` deletes them.
+
+For a fresh installation created with this example, rebuild after updating the
+checkout and rerun the same `up -d` command. Keep the previous image under a
+separate tag for rollback. Existing installations with a newer backend should use
+the [additive overlay](docs/CREATION_STUDIO.md#upgrade-an-existing-installation-safely)
+to preserve their installed dependencies and migration version.
+
+The password applies to the entire installation. Creator Studio does not add
+separate user accounts or per-user isolation. For remote access, configure HTTPS,
+authentication, explicit origins, and appropriate network restrictions before
+exposing the services. See [security configuration](docs/5-CONFIGURATION/security.md).
+
+## Development and verification
+
+Use Python **3.11 or 3.12**, Node.js **22**, uv, and Docker for development.
+Install dependencies from the lockfiles:
+
+```sh
+uv sync --frozen
+npm --prefix frontend ci
 ```
 
-**Option B:** Create the file manually
-Copy this into a new file called `docker-compose.yml`:
+Run the API, source-processing worker, and frontend as described in the
+[source installation guide](docs/1-INSTALLATION/from-source.md). The worker is
+required for background ingestion and embeddings. Native MP4/narration exports
+also need ffmpeg, DejaVu fonts, and espeak-ng; the Docker image includes them.
 
-```yaml
-services:
-  surrealdb:
-    image: surrealdb/surrealdb:v2
-    command: start --log info --user root --pass root rocksdb:/mydata/mydatabase.db
-    user: root
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./surreal_data:/mydata
-    restart: always
+Run the checks used for this project:
 
-  open_notebook:
-    image: lfnovo/open_notebook:v1-latest
-    ports:
-      - "8502:8502"
-      - "5055:5055"
-    environment:
-      - OPEN_NOTEBOOK_ENCRYPTION_KEY=change-me-to-a-secret-string
-      - SURREAL_URL=ws://surrealdb:8000/rpc
-      - SURREAL_USER=root
-      - SURREAL_PASSWORD=root
-      - SURREAL_NAMESPACE=open_notebook
-      - SURREAL_DATABASE=open_notebook
-    volumes:
-      - ./notebook_data:/app/data
-    depends_on:
-      - surrealdb
-    restart: always
+```sh
+uv run pytest tests/ -v
+uv run ruff check .
+npm --prefix frontend test
+npm --prefix frontend run lint
+(cd frontend && npx tsc --noEmit)
+npm --prefix frontend run build
 ```
 
-### Step 2: Set Your Encryption Key
-Edit `docker-compose.yml` and change this line:
-```yaml
-- OPEN_NOTEBOOK_ENCRYPTION_KEY=change-me-to-a-secret-string
-```
-to any secret value (e.g., `my-super-secret-key-123`)
+The merged Studio milestone passed **330 backend tests and 206 frontend tests**,
+TypeScript, and the production image build. Browser checks covered desktop and
+390-pixel phone layouts, light/dark themes, editing and recovery, and actual
+exports. Automated accessibility checks passed on the inspected screens. These
+checks do not establish every user's accessibility or content-review needs.
+See [project status](docs/STATUS.md) for verification details and deployment state.
 
-### Step 3: Start Services
-```bash
-docker compose up -d
-```
+## Limits to understand
 
-Wait 15-20 seconds, then open: **http://localhost:8502**
+- AI drafts require source review. A saved reference records provenance; it does
+  not prove that a claim is correct or supported.
+- Source excerpts preserve input text. They do not translate, infer dates, or
+  establish conceptual relationships.
+- Studio currently uses English fallback copy in other UI locales. Local voice
+  and font coverage vary by language; review exported text and pronunciation.
+- JSON import must be smaller than 1 MB. An installation supports up to 1,000
+  saved artifacts. See [storage and limits](docs/CREATION_STUDIO.md#storage-and-limits).
+- Model and renderer availability determine which features can run. Missing
+  export tools disable the corresponding formats.
 
-### Step 4: Configure AI Provider
-1. Go to **Models** and choose your provider (OpenAI, Anthropic, Google, etc.)
-2. Click **+ Add Configuration**
-3. Paste your API key and other info as needed and click **Add Configuration**
-4. Click **Test** to test connection
-5. Click **Sync Models** and check models to include
-6. Under **Default Model Assignments**, click **Auto-Assign Defaults** or manually specify which models to use for what 
+## Documentation and support
 
-Done! You're ready to create your first notebook.
+| Need | Start here |
+| --- | --- |
+| Drafts, exports, transfer, and recovery | [Creation Studio guide](docs/CREATION_STUDIO.md) |
+| Verified state and remaining acceptance | [Project status](docs/STATUS.md) |
+| Sources, notes, chat, and search | [User guide](docs/3-USER-GUIDE/index.md) |
+| AI provider configuration | [Providers](docs/4-AI-PROVIDERS/index.md) |
+| API integrations | [API reference](docs/7-DEVELOPMENT/api-reference.md) |
+| Installation problems | [Troubleshooting](docs/6-TROUBLESHOOTING/quick-fixes.md) |
+| Architecture and contributions | [Development documentation](docs/7-DEVELOPMENT/index.md) |
 
-> **Need an API key?** Get one from:
-> [OpenAI](https://platform.openai.com/api-keys) · [Anthropic](https://console.anthropic.com/) · [Google](https://aistudio.google.com/) · [Groq](https://console.groq.com/) (free tier)
+Report Creator Studio bugs and feature requests in
+[this repository's issues](https://github.com/dlpwaters/creator-studio/issues).
+Include the commit or image version, reproduction steps, and relevant redacted
+logs. Keep credentials, private source material, and database dumps out of issues.
+For contributions, see [CONTRIBUTING.md](CONTRIBUTING.md); use Creator Studio's
+repository for issues and pull requests. Existing upstream guides may still use
+Open Notebook terminology or upstream image examples. Use the setup above for
+this fork's complete feature set.
 
-> **Want free local AI?** See [examples/docker-compose-ollama.yml](examples/) for Ollama setup
+## Attribution and license
 
----
+Creator Studio is a fork of [Open Notebook](https://github.com/lfnovo/open-notebook),
+created by Luis Novo and its contributors. The original research, provider,
+podcast, and notebook infrastructure comes from that project. The
+[Open Notebook website](https://www.open-notebook.ai) and
+[Discord community](https://discord.gg/37XJPXfz2w) belong to the upstream project.
 
-### 📚 More Installation Options
-
-- **[With Ollama (Free Local AI)](examples/docker-compose-ollama.yml)** - Run models locally without API costs
-- **[From Source (Developers)](docs/1-INSTALLATION/from-source.md)** - For development and contributions
-- **[Complete Installation Guide](docs/1-INSTALLATION/index.md)** - All deployment scenarios
-
----
-
-### 📖 Need Help?
-
-- **🤖 AI Installation Assistant**: [CustomGPT to help you install](https://chatgpt.com/g/g-68776e2765b48191bd1bae3f30212631-open-notebook-installation-assistant)
-- **🆘 Troubleshooting**: [5-minute troubleshooting guide](docs/6-TROUBLESHOOTING/quick-fixes.md)
-- **💬 Community Support**: [Discord Server](https://discord.gg/37XJPXfz2w)
-- **🐛 Report Issues**: [GitHub Issues](https://github.com/lfnovo/open-notebook/issues)
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=lfnovo/open-notebook&type=date&legend=top-left)](https://www.star-history.com/#lfnovo/open-notebook&type=date&legend=top-left)
-
-
-## Provider Support Matrix
-
-Thanks to the [Esperanto](https://github.com/lfnovo/esperanto) library, we support this providers out of the box!
-
-| Provider     | LLM Support | Embedding Support | Speech-to-Text | Text-to-Speech |
-|--------------|-------------|------------------|----------------|----------------|
-| OpenAI       | ✅          | ✅               | ✅             | ✅             |
-| Anthropic    | ✅          | ❌               | ❌             | ❌             |
-| Groq         | ✅          | ❌               | ✅             | ❌             |
-| Google (GenAI) | ✅          | ✅               | ✅             | ✅             |
-| Vertex AI    | ✅          | ✅               | ❌             | ✅             |
-| Ollama       | ✅          | ✅               | ❌             | ❌             |
-| Perplexity   | ✅          | ❌               | ❌             | ❌             |
-| ElevenLabs   | ❌          | ❌               | ✅             | ✅             |
-| Deepgram     | ❌          | ❌               | ❌             | ✅             |
-| Azure OpenAI | ✅          | ✅               | ✅             | ✅             |
-| Mistral      | ✅          | ✅               | ✅             | ✅             |
-| DeepSeek     | ✅          | ❌               | ❌             | ❌             |
-| Voyage       | ❌          | ✅               | ❌             | ❌             |
-| xAI          | ✅          | ❌               | ❌             | ✅             |
-| OpenRouter   | ✅          | ✅               | ❌             | ❌             |
-| DashScope (Qwen) | ✅          | ❌               | ❌             | ❌             |
-| MiniMax      | ✅          | ❌               | ❌             | ❌             |
-| OpenAI Compatible* | ✅          | ✅               | ✅             | ✅             |
-
-*Supports LM Studio and any OpenAI-compatible endpoint
-
-## ✨ Key Features
-
-### Core Capabilities
-- **🔒 Privacy-First**: Your data stays under your control - no cloud dependencies
-- **🎯 Multi-Notebook Organization**: Manage multiple research projects seamlessly
-- **📚 Universal Content Support**: PDFs, videos, audio, web pages, Office docs, and more
-- **🤖 Multi-Model AI Support**: 18+ providers including OpenAI, Anthropic, Ollama, Google, LM Studio, and more
-- **🎙️ Professional Podcast Generation**: Advanced multi-speaker podcasts with Episode Profiles
-- **🔍 Intelligent Search**: Full-text and vector search across all your content
-- **💬 Context-Aware Chat**: AI conversations powered by your research materials
-- **📝 AI-Assisted Notes**: Generate insights or write notes manually
-- **🎬 Creation Studio**: Turn selected notebook sources into editable slide decks,
-  captioned explainer videos, briefs, quizzes, flashcards, concept groups, and timelines.
-  Start with local source excerpts or explicitly request an AI draft. Review, edit,
-  save, and export without leaving your research workspace. Search saved work,
-  edit section order and evidence, copy drafts, import JSON exports, and recover
-  retained artifacts from deleted notebooks.
-
-See [Creation Studio](docs/CREATION_STUDIO.md) for formats, source controls,
-local narration, and deployment instructions.
-
-### Advanced Features
-- **⚡ Reasoning Model Support**: Full support for thinking models like DeepSeek-R1 and Qwen3
-- **🔧 Content Transformations**: Powerful customizable actions to summarize and extract insights
-- **🌐 Comprehensive REST API**: Full programmatic access for custom integrations [![API Docs](https://img.shields.io/badge/API-Documentation-blue?style=flat-square)](http://localhost:5055/docs)
-- **🔐 Optional Password Protection**: Secure public deployments with authentication
-- **📊 Fine-Grained Context Control**: Choose exactly what to share with AI models
-- **📎 Citations**: Get answers with proper source citations
-
-
-## Podcast Feature
-
-[![Check out our podcast sample](https://img.youtube.com/vi/D-760MlGwaI/0.jpg)](https://www.youtube.com/watch?v=D-760MlGwaI)
-
-## 📚 Documentation
-
-### Getting Started
-- **[📖 Introduction](docs/0-START-HERE/index.md)** - Learn what Open Notebook offers
-- **[⚡ Quick Start](docs/0-START-HERE/quick-start.md)** - Get up and running in 5 minutes
-- **[🔧 Installation](docs/1-INSTALLATION/index.md)** - Comprehensive setup guide
-- **[🎯 Your First Notebook](docs/0-START-HERE/first-notebook.md)** - Step-by-step tutorial
-
-### User Guide
-- **[📱 Interface Overview](docs/3-USER-GUIDE/interface-overview.md)** - Understanding the layout
-- **[📚 Notebooks](docs/3-USER-GUIDE/notebooks.md)** - Organizing your research
-- **[📄 Sources](docs/3-USER-GUIDE/sources.md)** - Managing content types
-- **[📝 Notes](docs/3-USER-GUIDE/notes.md)** - Creating and managing notes
-- **[💬 Chat](docs/3-USER-GUIDE/chat.md)** - AI conversations
-- **[🔍 Search](docs/3-USER-GUIDE/search.md)** - Finding information
-
-### Advanced Topics
-- **[🎙️ Podcast Generation](docs/2-CORE-CONCEPTS/podcasts.md)** - Create professional podcasts
-- **[🔧 Content Transformations](docs/2-CORE-CONCEPTS/transformations.md)** - Customize content processing
-- **[🤖 AI Models](docs/4-AI-PROVIDERS/index.md)** - AI model configuration
-- **[🔌 MCP Integration](docs/5-CONFIGURATION/mcp-integration.md)** - Connect with Claude Desktop, VS Code and other MCP clients
-- **[🔧 REST API Reference](docs/7-DEVELOPMENT/api-reference.md)** - Complete API documentation
-- **[🔐 Security](docs/5-CONFIGURATION/security.md)** - Password protection and privacy
-- **[🚀 Deployment](docs/1-INSTALLATION/index.md)** - Complete deployment guides for all scenarios
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## 🗺️ Roadmap
-
-### Upcoming Features
-- **Live Front-End Updates**: Real-time UI updates for smoother experience
-- **Async Processing**: Faster UI through asynchronous content processing
-- **Cross-Notebook Sources**: Reuse research materials across projects
-- **Bookmark Integration**: Connect with your favorite bookmarking apps
-
-### Recently Completed ✅
-- **Next.js Frontend**: Modern React-based frontend with improved performance
-- **Comprehensive REST API**: Full programmatic access to all functionality
-- **Multi-Model Support**: 18+ AI providers including OpenAI, Anthropic, Ollama, LM Studio
-- **Advanced Podcast Generator**: Professional multi-speaker podcasts with Episode Profiles
-- **Content Transformations**: Powerful customizable actions for content processing
-- **Enhanced Citations**: Improved layout and finer control for source citations
-- **Multiple Chat Sessions**: Manage different conversations within notebooks
-
-See the [open issues](https://github.com/lfnovo/open-notebook/issues) for a full list of proposed features and known issues.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-## 📖 Need Help?
-- **🤖 AI Installation Assistant**: We have a [CustomGPT built to help you install Open Notebook](https://chatgpt.com/g/g-68776e2765b48191bd1bae3f30212631-open-notebook-installation-assistant) - it will guide you through each step!
-- **New to Open Notebook?** Start with our [Getting Started Guide](docs/0-START-HERE/index.md)
-- **Need installation help?** Check our [Installation Guide](docs/1-INSTALLATION/index.md)
-- **Want to see it in action?** Try our [Quick Start Tutorial](docs/0-START-HERE/quick-start.md)
-
-## 🤝 Community & Contributing
-
-### Join the Community
-- 💬 **[Discord Server](https://discord.gg/37XJPXfz2w)** - Get help, share ideas, and connect with other users
-- 🐛 **[GitHub Issues](https://github.com/lfnovo/open-notebook/issues)** - Report bugs and request features
-- ⭐ **Star this repo** - Show your support and help others discover Open Notebook
-
-### Contributing
-We welcome contributions! We're especially looking for help with:
-- **Frontend Development**: Help improve our modern Next.js/React UI
-- **Testing & Bug Fixes**: Make Open Notebook more robust
-- **Feature Development**: Build the coolest research tool together
-- **Documentation**: Improve guides and tutorials
-
-**Current Tech Stack**: Python, FastAPI, Next.js, React, SurrealDB
-**Future Roadmap**: Real-time updates, enhanced async processing
-
-See our [Contributing Guide](CONTRIBUTING.md) for detailed information on how to get started.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-## 📄 License
-
-Open Notebook is MIT licensed. See the [LICENSE](LICENSE) file for details.
-
-
-**Community Support**:
-- 💬 [Discord Server](https://discord.gg/37XJPXfz2w) - Get help, share ideas, and connect with users
-- 🐛 [GitHub Issues](https://github.com/lfnovo/open-notebook/issues) - Report bugs and request features
-- 🌐 [Website](https://www.open-notebook.ai) - Learn more about the project
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/lfnovo/open-notebook.svg?style=for-the-badge
-[contributors-url]: https://github.com/lfnovo/open-notebook/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/lfnovo/open-notebook.svg?style=for-the-badge
-[forks-url]: https://github.com/lfnovo/open-notebook/network/members
-[stars-shield]: https://img.shields.io/github/stars/lfnovo/open-notebook.svg?style=for-the-badge
-[stars-url]: https://github.com/lfnovo/open-notebook/stargazers
-[issues-shield]: https://img.shields.io/github/issues/lfnovo/open-notebook.svg?style=for-the-badge
-[issues-url]: https://github.com/lfnovo/open-notebook/issues
-[license-shield]: https://img.shields.io/github/license/lfnovo/open-notebook.svg?style=for-the-badge
-[license-url]: https://github.com/lfnovo/open-notebook/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/lfnovo
-[product-screenshot]: images/screenshot.png
-[Next.js]: https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white
-[Next-url]: https://nextjs.org/
-[React]: https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black
-[React-url]: https://reactjs.org/
-[Python]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
-[Python-url]: https://www.python.org/
-[LangChain]: https://img.shields.io/badge/LangChain-3A3A3A?style=for-the-badge&logo=chainlink&logoColor=white
-[LangChain-url]: https://www.langchain.com/
-[SurrealDB]: https://img.shields.io/badge/SurrealDB-FF5E00?style=for-the-badge&logo=databricks&logoColor=white
-[SurrealDB-url]: https://surrealdb.com/
+Distributed under the [MIT License](LICENSE). The upstream copyright and license
+notices are preserved.
